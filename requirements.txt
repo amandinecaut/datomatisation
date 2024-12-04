@@ -1,0 +1,3 @@
+streamlit==1.40.2
+sci-kit-learn==1.5.2
+google-generativea==0.8.3

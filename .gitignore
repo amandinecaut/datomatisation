@@ -1,4 +1,8 @@
 secrets.json
+secrets.toml
+data-final.csv
+tmp.py
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

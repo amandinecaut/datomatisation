@@ -1,0 +1,1 @@
+store/vector_store_openai_small_batchs123.zip filter=lfs diff=lfs merge=lfs -text
