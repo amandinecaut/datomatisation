@@ -3,6 +3,8 @@ import pandas as pd
 import json
 import google.generativeai as genai
 
+# TODO: Fix upload bug by reevaluation necessary functions
+
 # load secrets from .streamlit/secrets.toml
 GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY", "")
 
@@ -10,30 +12,35 @@ genai.configure(api_key=GEMINI_API_KEY)
 
 st.set_page_config(layout="wide")
 
+import app_utilities
 
 from app_utilities import (
     perform_pca,
     update_df,
     load_data,
     load_map,
-    update_map,
+    display_results,
 )
 
 
-height = 700  # height of the container
-DEFAULT_N_COMPONENTS = 5
+height = 800  # height of the container
+DEFAULT_DATA = "./data/data-final-sample.csv"
+DEFAULT_MAP = "./data/map.json"
+
 
 # track interaction prompt
-if "interaction_prompt" not in st.session_state:
-    st.session_state.interaction_prompt = ""
 if "entity_col" not in st.session_state:
     st.session_state.entity_col = "Index"
-if "features" not in st.session_state:
-    st.session_state.features = []
-if "df" not in st.session_state:
-    st.session_state.df = pd.DataFrame()
 if "pca_df" not in st.session_state:
     st.session_state.pca_df = None
+
+if "file" not in st.session_state:
+    load_data()
+if "map" not in st.session_state:
+    load_map()
+
+# for key, value in st.session_state.items():
+#     print(key)  # , value)
 
 # Add and app header
 st.title("Automated PCA pipeline")
@@ -57,12 +64,6 @@ with tab1:
         on_change=load_data,
     )
 
-    if st.session_state.file is None:
-        df = pd.read_csv("./data/data-final-sample.csv")
-    else:
-        df = pd.read_csv(st.session_state.file)
-    update_df(df)
-
     left_t1.markdown("### Upload column name mapping")
     left_t1.file_uploader(
         "Choose a file",
@@ -71,63 +72,75 @@ with tab1:
         on_change=load_map,
     )
 
-    # read json file
-    if st.session_state.map is None:
-        with open("./data/map.json", "r") as f:
-            map = json.load(f)
-    else:
-        with open(st.session_state.map, "r") as f:
-            map = json.load(f)
-
-    update_map(map)
-
     # display the info of the data
-    right_t1.markdown("### Data info")
+    right_t1.markdown("### Data information")
 
-    cols = ["Index"] + df.columns.to_list()
+    expander_sample = right_t1.expander("Sample of the data")
+    expander_sample.write(st.session_state.df_full.sample(5))
+
+    cols = ["Index"] + st.session_state.df_full.columns.to_list()
     # drop down "select entity", default to "Index"
     entity = right_t1.selectbox(
-        "Select entity",
+        "Select column to index data",
         cols,
         index=0,
         key="entity_col",
         on_change=update_df,
-        args=(df,),
     )
-    update_df(df)
 
-    default_ignore = [c for c in df.columns.to_list() if c not in map.keys()]
-    # print(default_ignore)
+    if st.session_state.col_mapping != {}:
+        default_ignore = [
+            c
+            for c in st.session_state.df_full.columns.to_list()
+            if c not in st.session_state.col_mapping.keys()
+            and c != st.session_state.entity_col
+        ]
+    else:
+        default_ignore = []
+
+    if "ignore_cols" not in st.session_state:
+        update_df(default_ignore)
 
     # add check box to ignore certain columns
     ignore_cols = right_t1.multiselect(
         label="Ignore columns",
-        options=df.columns.to_list(),
+        options=st.session_state.df_full.columns.to_list(),
         default=default_ignore,
         on_change=update_df,
-        args=(df,),
         key="ignore_cols",
     )
-    update_df(df)
-
-    # display the first 5 rows
-    right_t1.write("Sample of data")
-    right_t1.write(df[st.session_state.features].sample(10))
 
     # disply warning if there are rows with NaN
-    if df[st.session_state.features].isnull().any(axis=1).sum() > 0:
-        right_t1.warning("There are rows with NaN, these will be dropped.")
-    # display rows with NaN
+    if (
+        st.session_state.df_full[st.session_state.features].isnull().any(axis=1).sum()
+        > 0
+    ):
+        right_t1.warning("There are rows containing NaN, these will be dropped.")
 
-    right_t1.write("Rows with NaN")
-    right_t1.write(df[df[st.session_state.features].isnull().any(axis=1)])
+    expander_nan = right_t1.expander("Rows containing NaN")
+    if st.session_state.entity_col == "Index":
+        expander_nan.write(
+            st.session_state.df_full[
+                st.session_state.df_full[st.session_state.features].isnull().any(axis=1)
+            ][st.session_state.features]
+        )
+    else:
+        expander_nan.write(
+            st.session_state.df_full[
+                st.session_state.df_full[
+                    [st.session_state.entity_col] + st.session_state.features
+                ]
+                .isnull()
+                .any(axis=1)
+            ][[st.session_state.entity_col] + st.session_state.features]
+        )
 
-    right_t1.write("Data to use")
-    right_t1.write(st.session_state.df)
+    expander_data = right_t1.expander("Show all data to be used")
+    expander_data.write(st.session_state.df_filtered)
+    # show st.session_state.df_filtered with the index column blue
 
-    # show col_mapping as a table
-    right_t1.write("Column mapping")
-    right_t1.write(st.session_state.col_mapping)
+    expander_map = right_t1.expander("Column mapping")
+    expander_map.write(st.session_state.col_mapping)
 
 
 with tab2:
@@ -140,25 +153,37 @@ with tab2:
 
     left_t2.markdown("## PCA")
 
-    # # if st.session_state.pca_df is and empty dataframe, perform PCA
-    # if st.session_state.pca_df.empty:
-    #     perform_pca(df)
+    if "cum_exp" not in st.session_state:
+        perform_pca()
 
-    # left select the number of PCA components, max the length of features
-    n_components = left_t2.slider(
-        "Select the number of PCA components",
-        1,
-        len(st.session_state.features),
-        len(
-            st.session_state.features
-        ),  # int(len(st.session_state.features) / 2),  # DEFAULT_N_COMPONENTS,
-        key="n_components",
+    # right_t2.write(st.session_state.pca_component_dict)
+    right_t2.write("## Automated labeling")
+    display_results(right_t2)
+
+    cum_exp = left_t2.slider(
+        "Select the cumulative explained variance",
+        min_value=0.1,
+        max_value=1.0,
+        value=app_utilities.DEFAULT_CUM_EXP,
+        step=0.05,
+        key="cum_exp",
         on_change=perform_pca,
-        args=(right_t2,),
     )
-    right_t2.markdown("### PCA results")
-    perform_pca(right_t2)
 
+    left_t2.write(f"Number of components: {st.session_state.N}")
+    # right_t2.markdown("### PCA results")
+    # perform_pca(right_t2)
+
+    # horizontal line
+    right_t2.markdown("---")
+
+    right_t2.write("## PCA results")
+
+    expander_pca = right_t2.expander("PCA results")
+    expander_pca.write(st.session_state.pca_df)
+
+    expander_exp = right_t2.expander("PCA explained variance")
+    expander_exp.write(st.session_state.exp_ratio)
 
 with tab3:
 

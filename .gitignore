@@ -2,6 +2,7 @@ secrets.json
 secrets.toml
 data-final.csv
 tmp.py
+WVS_Cross-National_Wave_7_csv_v6_0.csv
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
