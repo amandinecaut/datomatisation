@@ -17,7 +17,7 @@ st.set_page_config(layout="wide")
 import app_utilities
 
 from app_utilities import (
-    perform_pca,
+    perform_FA,
     update_df,
     load_new_data,
     load_map,
@@ -36,8 +36,8 @@ DEFAULT_MAP = "./data/map.json"
 # track interaction prompt
 if "entity_col" not in st.session_state:
     st.session_state.entity_col = "Index"
-if "pca_df" not in st.session_state:
-    st.session_state.pca_df = None
+if "FA_df" not in st.session_state:
+    st.session_state.FA_df = None
 
 
 # set_default_data()
@@ -45,9 +45,9 @@ if "pca_df" not in st.session_state:
 #     print(key)  # , value)
 
 # Add and app header
-st.title("Automated PCA pipeline")
+st.title("Automated Factor Analysis pipeline")
 
-tab1, tab2, tab3 = st.tabs(["Load data", "PCA", "View"])
+tab1, tab2, tab3 = st.tabs(["Load data", "Factor Analysis", "View"])
 
 with tab1:
 
@@ -169,7 +169,7 @@ with tab2:
     left_t2 = left_t2.container(height=height, border=0)
     right_t2 = right_t2.container(height=height, border=3)
 
-    left_t2.markdown("### PCA")
+    left_t2.markdown("### Factor Analysis")
 
     cum_exp = left_t2.slider(
         "Select the cumulative explained variance",
@@ -178,15 +178,18 @@ with tab2:
         value=app_utilities.DEFAULT_CUM_EXP,
         step=0.05,
         key="cum_exp",
-        on_change=perform_pca,
+        on_change=perform_FA,
     )
 
+    if left_t2.button("Run Factor Analysis"):
+        perform_FA()
+
     if "df_full" not in st.session_state:
-        right_t2.write("Load data to perform PCA")
+        right_t2.write("Load data to perform Factor Analysis")
     elif len(st.session_state.df_filtered) < 10:
-        right_t2.write("Not enough data to perform PCA")
+        right_t2.write("Not enough data to perform Factor Analysis")
     elif "N" not in st.session_state:
-        right_t2.write("Select cumulative explained variance to perform PCA")
+        right_t2.write("Select cumulative explained variance to perform Factor Analysis")
     elif "N" in st.session_state:
         right_t2.write("## Automated labeling")
         display_results(right_t2)
@@ -197,18 +200,18 @@ with tab2:
 
         right_t2.markdown("---")
 
-        right_t2.write("## PCA results")
+        right_t2.write("## Factor Analysis results")
 
-        expander_pca = right_t2.expander("PCA results")
-        expander_pca.write(st.session_state.pca_df)
+        expander_FA = right_t2.expander("Factor Analysis results")
+        expander_FA.write(st.session_state.FA_df)
 
-        expander_exp = right_t2.expander("PCA components")
+        expander_exp = right_t2.expander("Factors components")
         expander_exp.write(st.session_state.components)
 
         # print sum over columns of st.session_state.components
         # print(np.linalg.norm(st.session_state.components, axis=0))
 
-        expander_exp = right_t2.expander("PCA explained variance")
+        expander_exp = right_t2.expander("Factors explained variance")
         expander_exp.write(st.session_state.exp_ratio)
     else:
         pass
@@ -225,8 +228,8 @@ with tab3:
 
     if "df_full" not in st.session_state:
         right_t3.write("Load data to view information about a data point")
-    elif st.session_state.pca_df is None:
-        right_t3.write("Perform PCA to view information about a data point")
+    elif st.session_state.FA_df is None:
+        right_t3.write("Perform Factor Analysis to view information about a data point")
     else:
 
         # drop down with entity column, default to first column

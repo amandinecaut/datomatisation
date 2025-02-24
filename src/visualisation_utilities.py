@@ -17,22 +17,22 @@ def rgb_to_color(rgb_color: tuple, opacity=1):
 
 
 class Visualization:
-    def __init__(self, df_pca, pca_label_map):
+    def __init__(self, df_FA, FA_label_map):
 
         # print("creating visualization")
-        cols = [k for k in pca_label_map.keys()]
-        self.df_pca = df_pca[cols]
-        self.pca_label_map = pca_label_map
+        cols = [k for k in FA_label_map.keys()]
+        self.df_FA = df_FA[cols]
+        self.FA_label_map = FA_label_map
 
         self.df_z_scores = self.get_z_scores()
-        # map self.df_z_scores using pca_label_map
-        self.df_z_scores.rename(columns=self.pca_label_map, inplace=True)
+        # map self.df_z_scores using FA_label_map
+        self.df_z_scores.rename(columns=self.FA_label_map, inplace=True)
 
         self.fig = go.Figure()
         self.set_visualization()
 
     def get_z_scores(self):
-        return self.df_pca.apply(zscore, nan_policy="omit")
+        return self.df_FA.apply(zscore, nan_policy="omit")
 
     def set_visualization(self):
         # streamlit primary color
@@ -45,6 +45,7 @@ class Visualization:
             df = self.df_z_scores.sample(sample_size)
         else:
             df = self.df_z_scores
+
         # add a scatter plot for each principal component
         for i, col in enumerate(df.columns):
 
@@ -60,32 +61,47 @@ class Visualization:
                     showlegend=False,
                 )
             )
+            self.fig.add_annotation(
+                x=0, 
+                y=i + 0.4, 
+                text=f"<span style=''>{df[col].name} </span>", 
+                showarrow=False,
+                font={"color": rgb_to_color(hex_to_rgb("#9340ff")), "family": "Gilroy-Light", "size": 20},
+                name = f"{col} text",
+            )
 
         df = self.df_z_scores.iloc[0, :].to_frame().T
 
         for i, col in enumerate(df.columns):
-
+                
             self.fig.add_trace(
                 go.Scatter(
                     x=df[col],
                     y=np.ones(len(df)) * i,
                     mode="markers",
                     marker={
-                        "size": 15,
-                        "color": rgb_to_color(hex_to_rgb(color), opacity=1),
+                        "size": 13,
+                        "color": rgb_to_color(hex_to_rgb("#9340ff"), opacity=1),
                         "symbol": "square",
                     },
-                    # down add to legend
+                    
                     showlegend=False,
                     name=f"{col} selected",
-                )
+                )    
             )
+            
+
 
         # show grid line x axis
         self.fig.update_xaxes(
             showgrid=True,
+            fixedrange=True,
             gridwidth=1,
-            gridcolor=rgb_to_color(hex_to_rgb("#808080"), 0.8),
+            gridcolor=rgb_to_color(hex_to_rgb("#6a5acd"), 0.7),    
         )
-        # do not show y axis or grid
-        self.fig.update_yaxes(showgrid=False, visible=False)
+        # show y axis or grid
+        self.fig.update_yaxes(
+            showgrid=False, 
+            showticklabels=False,
+            fixedrange=True,
+            visible=False)

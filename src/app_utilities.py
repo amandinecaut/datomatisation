@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from sklearn.decomposition import PCA
+from sklearn.decomposition import FactorAnalysis
 from sklearn.preprocessing import StandardScaler
 import json
 import numpy as np
@@ -23,22 +23,43 @@ def clear_session_state(skip=[]):
 
     if "entity_col" not in st.session_state:
         st.session_state.entity_col = "Index"
-    if "pca_df" not in st.session_state:
-        st.session_state.pca_df = None
+    if "FA_df" not in st.session_state:
+        st.session_state.FA_df = None
 
 
 def load_new_data():
     clear_session_state(skip=["file"])
     load_data()
 
+def detect_delimiter(first_line):
+    # Common delimiters to try
+    delimiters = [',', ';', '\t', '|']
+    
+    # Try each delimiter and count how many columns we get
+    best_delimiter = None
+    max_columns = 0
+    
+    for delimiter in delimiters:
+        # Try to split the first line with the delimiter
+        columns = first_line.split(delimiter)
+        if len(columns) > max_columns:
+            max_columns = len(columns)
+            best_delimiter = delimiter
+    
+    return best_delimiter
 
 def load_data(file=None):
     if file is None:
         file = st.session_state.file
 
-    # st.session_state.file = "./data/data-final-sample.csv"
-    # print("loading data")
-    st.session_state.df_full = pd.read_csv(file)
+    delimiter = None
+    if isinstance(file, st.runtime.uploaded_file_manager.UploadedFile):
+        for line in file:
+            line = line.decode('utf-8')
+            delimiter = detect_delimiter(line)
+            break
+        file.seek(0)
+    st.session_state.df_full = pd.read_csv(file, sep=delimiter)
     # remove current map
     st.session_state.col_mapping = {}
 
@@ -102,15 +123,15 @@ def get_defaults():
     return DEFAULT_CUM_EXP, DEFAULT_SUM_THRESHOLD, DEFAULT_MAX_COMPONENTS
 
 
-def perform_pca(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
+def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
 
     if st.session_state.features != []:
         x = st.session_state.df_filtered.loc[:, st.session_state.features].values
         x = StandardScaler().fit_transform(x)
-        # PCA
-        pca = PCA()
-        principalComponents = pca.fit_transform(x)
-
+        # Factor Analysis
+        FA = FactorAnalysis()
+        principalComponents = FA.fit_transform(x)
+        components = FA.components_
         principalDf = pd.DataFrame(
             data=principalComponents,
             columns=[
@@ -122,7 +143,14 @@ def perform_pca(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
         if "cum_exp" in st.session_state:
             cum_exp = st.session_state.cum_exp
 
-        st.session_state.exp_ratio = pca.explained_variance_ratio_
+        #st.session_state.exp_ratio = PCA.explained_variance_ratio_ ## This is only for PCA
+       
+        # Calculate the variance explained by each factor
+        factor_variance = np.var(components, axis=1)
+        # Calculate the proportion of total variance explained by each factor
+        st.session_state.exp_ratio = explained_variance_ratio = factor_variance / np.sum(factor_variance)
+        # FA.noise_variance_ should we add that? 
+
         st.session_state.N = 1
         for i in range(1, len(st.session_state.exp_ratio)):
             if (
@@ -135,8 +163,8 @@ def perform_pca(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
         # print([sum(st.session_state.exp_ratio[: i + 1]) for i in range(len(st.session_state.exp_ratio))])
         # print(st.session_state.N)
 
-        pca_component_dict = {}
-        components = pca.components_
+        FA_component_dict = {}
+        
         # first st.session_state.N columns of components
         st.session_state.components = components[:, : st.session_state.N]
         for i in range(st.session_state.N):
@@ -185,7 +213,7 @@ def perform_pca(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
 
             label = get_component_labels(text)
 
-            pca_component_dict[f"principal component {i}"] = {
+            FA_component_dict[f"principal component {i}"] = {
                 "explained_variance_ratio": round(st.session_state.exp_ratio[i], 2),
                 "label": label,
                 "top": top_features,
@@ -194,19 +222,19 @@ def perform_pca(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
                 "values_bottom": bottom_values,
             }
 
-        st.session_state.pca_component_dict = pca_component_dict
-        st.session_state.pca_df = principalDf
-        # print("pca")
+        st.session_state.FA_component_dict = FA_component_dict
+        st.session_state.FA_df = principalDf
+        # print("FA done")
         vis = Visualization(
-            st.session_state.pca_df,
-            {k: v["label"] for k, v in st.session_state.pca_component_dict.items()},
+            st.session_state.FA_df,
+            {k: v["label"] for k, v in st.session_state.FA_component_dict.items()},
         )
         st.session_state.fig_base = vis.fig
         st.session_state.df_z_scores = vis.df_z_scores
 
     else:
-        st.session_state.pca_component_dict = {}
-        st.session_state.pca_df = None
+        st.session_state.FA_component_dict = {}
+        st.session_state.FA_df = None
 
 
 def get_component_labels(text):
@@ -216,7 +244,7 @@ def get_component_labels(text):
         "history": [
             {
                 "role": "user",
-                "parts": "Make a label from the following texts that come from PCA analysis. The label should be of the form x vs y, where x is one or more adjectives that describes an entity that has the top features and y is one or more adjectives that describes an entity that has the bottom features. Output a label only.",
+                "parts": "Make a label from the following texts that come from factor analysis. The label should be of the form x vs y, where x is one or more adjectives that describes an entity that has the top features and y is one or more adjectives that describes an entity that has the bottom features. Output a label only.",
                 # "parts": "Make a label from the following texts that come from PCA analysis. The label should be of the form 'x vs y', but if that is not possible a single label 'x'. Output the label only.",
             },
             {"role": "model", "parts": "Sure!"},
@@ -240,7 +268,7 @@ def get_component_labels(text):
 
 
 def display_results(component):
-    results_dict = st.session_state.pca_component_dict
+    results_dict = st.session_state.FA_component_dict
     for key in results_dict.keys():
         # component.write(f"### {key.capitalize()}: {results_dict[key]['label']}")
         # component.write(
@@ -285,22 +313,25 @@ def add_to_fig():
     ind = st.session_state.df_filtered.index.tolist().index(
         st.session_state.selected_entity
     )
-    print(ind)
 
     df = st.session_state.df_z_scores.iloc[ind, :].to_frame().T
-    # print(df)
 
     color = st.get_option("theme.primaryColor")
     if color is None:
         color = "#FF4B4B"
 
-    # fig = st.session_state.fig_base
+
 
     for col in df.columns.tolist():
 
         st.session_state.fig_base.update_traces(
             selector={"name": f"{col} selected"}, x=df[col]
         )
+        st.session_state.fig_base.update_traces(
+            selector={"name": f"{col} text"},
+            text=f"<span style=''>{df[col].name}: {df[col].values[0]:.2f} </span>",
+        )
+        
 
     if "fig" in st.session_state:
         del st.session_state["fig"]
