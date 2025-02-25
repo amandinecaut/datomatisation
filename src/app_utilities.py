@@ -7,6 +7,7 @@ import numpy as np
 import google.generativeai as genai
 from google.generativeai import GenerationConfig
 from visualisation_utilities import Visualization, hex_to_rgb, rgb_to_color
+from clustering import Cluster
 import plotly.graph_objects as go
 
 
@@ -98,6 +99,9 @@ def update_df(ignore_cols=[]):
     if "cum_exp" in st.session_state:
         del st.session_state["cum_exp"]
 
+    if "num_clusters" in st.session_state:
+        del st.session_state["num_clusters"]
+
 
 def load_map(file=None):
 
@@ -114,13 +118,14 @@ def load_map(file=None):
     st.session_state.col_mapping = map
 
 
-DEFAULT_CUM_EXP = 0.3
+DEFAULT_CUM_EXP = 3
 DEFAULT_SUM_THRESHOLD = 0.6
 DEFAULT_MAX_COMPONENTS = 14
+DEFAULT_NUM_CLUSTERS = 5
 
 
 def get_defaults():
-    return DEFAULT_CUM_EXP, DEFAULT_SUM_THRESHOLD, DEFAULT_MAX_COMPONENTS
+    return DEFAULT_CUM_EXP, DEFAULT_SUM_THRESHOLD, DEFAULT_MAX_COMPONENTS, DEFAULT_NUM_CLUSTERS
 
 
 def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
@@ -128,43 +133,38 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
     if st.session_state.features != []:
         x = st.session_state.df_filtered.loc[:, st.session_state.features].values
         x = StandardScaler().fit_transform(x)
+        if "cum_exp" in st.session_state:
+            components = st.session_state.cum_exp
+        else:
+            components = DEFAULT_CUM_EXP
+
         # Factor Analysis
-        FA = FactorAnalysis()
+        FA = FactorAnalysis(components)
         principalComponents = FA.fit_transform(x)
-        components = FA.components_
+        
         principalDf = pd.DataFrame(
             data=principalComponents,
             columns=[
-                f"principal component {i}" for i in range(principalComponents.shape[-1])
+                f"Principal component {i}" for i in range(principalComponents.shape[-1])
             ],
         )
 
-        # let N be the most significant principal components based on cumulative explained variance
-        if "cum_exp" in st.session_state:
-            cum_exp = st.session_state.cum_exp
+        
 
         #st.session_state.exp_ratio = PCA.explained_variance_ratio_ ## This is only for PCA
-       
+        
+        # CHECK WITH AMY
         # Calculate the variance explained by each factor
-        factor_variance = np.var(components, axis=1)
+        #factor_variance = np.var(components, axis=1)
         # Calculate the proportion of total variance explained by each factor
-        st.session_state.exp_ratio = explained_variance_ratio = factor_variance / np.sum(factor_variance)
+        #st.session_state.exp_ratio = explained_variance_ratio = factor_variance / np.sum(factor_variance)
         # FA.noise_variance_ should we add that? 
 
-        st.session_state.N = 1
-        for i in range(1, len(st.session_state.exp_ratio)):
-            if (
-                sum(st.session_state.exp_ratio[: i + 1]) <= cum_exp
-                and i < DEFAULT_MAX_COMPONENTS
-            ):
-                st.session_state.N = i + 1
-            else:
-                break
-        # print([sum(st.session_state.exp_ratio[: i + 1]) for i in range(len(st.session_state.exp_ratio))])
-        # print(st.session_state.N)
+        st.session_state.N = components
 
         FA_component_dict = {}
-        
+        components = FA.components_
+
         # first st.session_state.N columns of components
         st.session_state.components = components[:, : st.session_state.N]
         for i in range(st.session_state.N):
@@ -213,8 +213,8 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
 
             label = get_component_labels(text)
 
-            FA_component_dict[f"principal component {i}"] = {
-                "explained_variance_ratio": round(st.session_state.exp_ratio[i], 2),
+            FA_component_dict[f"Principal component {i}"] = {
+                #"explained_variance_ratio": round(st.session_state.exp_ratio[i], 2),
                 "label": label,
                 "top": top_features,
                 "values_top": top_values,
@@ -237,10 +237,23 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
         st.session_state.FA_df = None
 
 
+def perform_clustering( num_clusters=DEFAULT_NUM_CLUSTERS):
+    if "num_clusters" in st.session_state:
+            num_clusters = st.session_state.num_clusters
+    else:
+        num_clusters = DEFAULT_NUM_CLUSTERS
+    
+
+    vis_cluster = Cluster(st.session_state.FA_df,
+            {k: v["label"] for k, v in st.session_state.FA_component_dict.items()},
+            num_clusters
+        )
+    st.session_state.fig_cluster = vis_cluster.fig
+        
 def get_component_labels(text):
 
     msgs = {
-        "system_instruction": "You are a data analyst ans scientist",
+        "system_instruction": "You are a data analyst and scientist",
         "history": [
             {
                 "role": "user",
@@ -290,9 +303,9 @@ def display_results(component):
         expander = component.expander(
             f"{key.capitalize()}: {results_dict[key]['label']}"
         )
-        expander.write(
-            f"Explained variance ratio: {results_dict[key]['explained_variance_ratio']}"
-        )
+        #expander.write(
+        #    f"Explained variance ratio: {results_dict[key]['explained_variance_ratio']}"
+        #)
         expander.write(f"Top features:")
         for i in range(len(results_dict[key]["top"])):
             # indent the text
@@ -327,13 +340,16 @@ def add_to_fig():
         st.session_state.fig_base.update_traces(
             selector={"name": f"{col} selected"}, x=df[col]
         )
-        st.session_state.fig_base.update_traces(
-            selector={"name": f"{col} text"},
-            text=f"<span style=''>{df[col].name}: {df[col].values[0]:.2f} </span>",
-        )
+
+        #st.session_state.fig_base.update_traces(
+        #    selector={"name": f"{col} text"},
+        #    text=f"<span style=''>{df[col].name}: {df[col].values[0]:.2f} </span>",
+        #)
         
 
     if "fig" in st.session_state:
         del st.session_state["fig"]
 
     # st.session_state.fig = fig
+
+

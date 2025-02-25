@@ -2,8 +2,10 @@ import streamlit as st
 import pandas as pd
 import json
 import google.generativeai as genai
+from google.generativeai import GenerationConfig
 import numpy as np
 from visualisation_utilities import Visualization
+from clustering import Cluster
 import plotly.graph_objects as go
 
 
@@ -18,6 +20,7 @@ import app_utilities
 
 from app_utilities import (
     perform_FA,
+    perform_clustering,
     update_df,
     load_new_data,
     load_map,
@@ -27,7 +30,10 @@ from app_utilities import (
     add_to_fig,
 )
 
-default_cum_exp, default_sum_threshold, default_max_components = get_defaults()
+#from chat import Chat
+
+
+default_cum_exp, default_sum_threshold, default_max_components, default_num_clusters = get_defaults()
 
 height = 1300  # height of the container
 DEFAULT_DATA = "./data/data-final-sample.csv"
@@ -172,24 +178,35 @@ with tab2:
     left_t2.markdown("### Factor Analysis")
 
     cum_exp = left_t2.slider(
-        "Select the cumulative explained variance",
-        min_value=0.1,
-        max_value=1.0,
+        "Select the number of components",
+        min_value=1,
+        max_value=10,
         value=app_utilities.DEFAULT_CUM_EXP,
-        step=0.05,
+        step=1,
         key="cum_exp",
         on_change=perform_FA,
     )
 
+    num_clusters = left_t2.slider(
+        "Select the number of clusters",
+        min_value=2,
+        max_value=10,
+        value=app_utilities.DEFAULT_NUM_CLUSTERS,
+        step=1,
+        key="num_clusters",
+        on_change=perform_clustering,
+    )
+
     if left_t2.button("Run Factor Analysis"):
         perform_FA()
+        perform_clustering()
 
     if "df_full" not in st.session_state:
         right_t2.write("Load data to perform Factor Analysis")
     elif len(st.session_state.df_filtered) < 10:
         right_t2.write("Not enough data to perform Factor Analysis")
     elif "N" not in st.session_state:
-        right_t2.write("Select cumulative explained variance to perform Factor Analysis")
+        right_t2.write("Select a number of factor to perform Factor Analysis")
     elif "N" in st.session_state:
         right_t2.write("## Automated labeling")
         display_results(right_t2)
@@ -212,7 +229,7 @@ with tab2:
         # print(np.linalg.norm(st.session_state.components, axis=0))
 
         expander_exp = right_t2.expander("Factors explained variance")
-        expander_exp.write(st.session_state.exp_ratio)
+        #expander_exp.write(st.session_state.exp_ratio)
     else:
         pass
 
@@ -241,16 +258,54 @@ with tab3:
             on_change=add_to_fig,
         )
 
-        # if "fig" not in st.session_state:
         right_t3.plotly_chart(
             st.session_state.fig_base, use_container_width=True, theme="streamlit"
         )
-        # else:
-        #     right_t3.plotly_chart(
-        #         st.session_state.fig, use_container_width=True, theme="streamlit"
-        #     )
+        
+        right_t3.plotly_chart(
+            st.session_state.fig_cluster, use_container_width=True, theme="streamlit"
+        )
 
+    with right_t3:
 
+        # Initialize chat history
+        if "messages" not in st.session_state:
+            st.session_state.messages = []
+
+        # Display previous messages
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+
+        # User input
+        if user_input := st.chat_input("Say something..."):
+            st.chat_message("user").markdown(user_input)
+            st.session_state.messages.append({"role": "user", "content": user_input})
+
+            msgs = {
+                    "system_instruction": "You are a data analyst and scientist",
+                    "history": [
+                        {"role": "user", "parts": "You give a description of the data. Don't invent the data, talk only about the data you have seen.\n"
+                         "You can also ask questions about the data.\n"
+                         "If the data are missing ask the user to input the data",},
+                        {"role": "model", "parts": "Sure!"},
+                    ],
+                    "content": {"role": "user", "parts": user_input}
+                }
+
+            # Generate response
+            model = genai.GenerativeModel(
+                    model_name="gemini-1.5-flash",
+                    system_instruction=msgs["system_instruction"],
+                    generation_config=GenerationConfig(max_output_tokens=50),
+                )
+            chat = model.start_chat(history=msgs["history"])
+            response = chat.send_message(content=msgs["content"])
+
+            with st.chat_message("assistant"):
+                assistant_reply = response.candidates[0].content.parts[0].text
+                st.markdown(assistant_reply)
+            st.session_state.messages.append({"role": "assistant", "content": assistant_reply})
 # debug
 # print()
 # print(st.session_state)

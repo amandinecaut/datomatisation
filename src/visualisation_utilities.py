@@ -45,6 +45,7 @@ class Visualization:
             df = self.df_z_scores.sample(sample_size)
         else:
             df = self.df_z_scores
+        print(df)
 
         # add a scatter plot for each principal component
         for i, col in enumerate(df.columns):
