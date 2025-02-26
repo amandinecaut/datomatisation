@@ -28,17 +28,23 @@ class Cluster:
         # Fit and predict cluster labels
         labels = kmeans.fit_predict(self.FA_df)
 
+
+
+
         self.FA_df['Cluster'] = labels
 
         
         # Store centroids and unique labels
         self.centroids = kmeans.cluster_centers_
-        self.u_labels = np.unique(labels)
+        #self.u_labels = np.unique(labels)
+        self.u_labels = self.FA_df['Cluster'].unique()
 
         # Find the closest point to each cluster center
         #self.closest_pt_idx = self.find_closest_points(kmeans)
 
         # Create cluster color map
+       
+       
         self.ind_col_map = {x: y for x, y in zip(self.u_labels, sns.color_palette('tab20', self.num_clusters))}
         self.ind_col_map = dict(sorted(self.ind_col_map.items()))
 
@@ -67,13 +73,23 @@ class Cluster:
                 raise RuntimeError(f"Missing attribute: {attr}. Ensure clustering is run first.")
 
 
-        # Plot each cluster
+        
+        dim_x = st.session_state["dim_x"]
+        dim_y = st.session_state["dim_y"]
+
+        inv_map = {st.session_state.FA_component_dict[k]["label"]: k for k in st.session_state.FA_component_dict.keys()}
+        
+        #print(self.FA_df[inv_map[dim_x]])
+        #print(inv_map[dim_x])
+
+
         for i in st.session_state.u_labels:
             cluster_points = st.session_state.FA_df[st.session_state.FA_df['Cluster'] == i]
+
             self.fig.add_trace(
                 go.Scatter(
-                x=cluster_points.iloc[:, 0],
-                y=cluster_points.iloc[:, 1],
+                x=cluster_points.loc[:, inv_map[dim_x]],
+                y=cluster_points.loc[:, inv_map[dim_y]],
                 mode='markers',
                 marker=dict(color=st.session_state.ind_col_map[i], opacity=0.25),
                 name=f'Cluster {i}'
@@ -81,13 +97,13 @@ class Cluster:
             #ax.scatter(df2[label == i , 0] , df2[label == i , 1] ,color=ind_col_map[i],  label = i, alpha= 0.25)
 
             # Plot centroids
-        self.fig.add_trace(go.Scatter(
-            x=st.session_state.centroids[:, 0],
-            y=st.session_state.centroids[:, 1],
-            mode='markers',
-            marker=dict(color='black', size=5, symbol='x'),
-            name='Centroids'
-        ))
+        #self.fig.add_trace(go.Scatter(
+        #    x=st.session_state.centroids[:, inv_map[dim_x]],
+        #    y=st.session_state.centroids[:, inv_map[dim_y]],
+        #    mode='markers',
+        #    marker=dict(color='black', size=5, symbol='x'),
+        #    name='Centroids'
+        #))
 
     
 
@@ -102,8 +118,8 @@ class Cluster:
         # Update layout
         self.fig.update_layout(
             title='K-Means Clustering Visualization',
-            xaxis_title='Feature 1',
-            yaxis_title='Feature 2',
+            xaxis_title= dim_x,
+            yaxis_title= dim_y,
             legend_title='Clusters',
             width=800,
             height=600

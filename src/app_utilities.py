@@ -352,4 +352,17 @@ def add_to_fig():
 
     # st.session_state.fig = fig
 
+def update_fig_cluster():
+    
+    if "fig_cluster" in st.session_state:
+        del st.session_state["fig_cluster"]
+
+    # TO DO SEPARETE THE CLUSTER FROM THE VISUALISATION
+
+
+    vis_cluster = Cluster(st.session_state.FA_df,
+            {k: v["label"] for k, v in st.session_state.FA_component_dict.items()},
+            num_clusters
+        )
+    st.session_state.fig_cluster = vis_cluster.fig
 

@@ -16,19 +16,19 @@ genai.configure(api_key=GEMINI_API_KEY)
 
 st.set_page_config(layout="wide")
 
-import app_utilities
+from app_utilities import *
 
-from app_utilities import (
-    perform_FA,
-    perform_clustering,
-    update_df,
-    load_new_data,
-    load_map,
-    display_results,
-    get_defaults,
-    set_default_data,
-    add_to_fig,
-)
+#from app_utilities import (
+#    perform_FA,
+#    perform_clustering,
+#    update_df,
+#    load_new_data,
+#    load_map,
+#    display_results,
+#    get_defaults,
+#    set_default_data,
+#    add_to_fig,
+#)
 
 #from chat import Chat
 
@@ -53,7 +53,7 @@ if "FA_df" not in st.session_state:
 # Add and app header
 st.title("Automated Factor Analysis pipeline")
 
-tab1, tab2, tab3 = st.tabs(["Load data", "Factor Analysis", "View"])
+tab1, tab2, tab3, tab4 = st.tabs(["Load data", "Factor Analysis", "View", "Clustering"])
 
 with tab1:
 
@@ -69,7 +69,8 @@ with tab1:
 
     # run default data
     if left_t1.button("Load demo data"):
-        app_utilities.set_default_data()
+        #app_utilities.set_default_data()
+        set_default_data()
 
     # left all box to upload data
     left_t1.markdown("#### Upload data")
@@ -181,25 +182,14 @@ with tab2:
         "Select the number of components",
         min_value=1,
         max_value=10,
-        value=app_utilities.DEFAULT_CUM_EXP,
+        value = DEFAULT_CUM_EXP, #value=app_utilities.DEFAULT_CUM_EXP,
         step=1,
         key="cum_exp",
         on_change=perform_FA,
     )
 
-    num_clusters = left_t2.slider(
-        "Select the number of clusters",
-        min_value=2,
-        max_value=10,
-        value=app_utilities.DEFAULT_NUM_CLUSTERS,
-        step=1,
-        key="num_clusters",
-        on_change=perform_clustering,
-    )
-
     if left_t2.button("Run Factor Analysis"):
         perform_FA()
-        perform_clustering()
 
     if "df_full" not in st.session_state:
         right_t2.write("Load data to perform Factor Analysis")
@@ -236,7 +226,6 @@ with tab2:
 with tab3:
 
     left_t3, right_t3 = st.columns([0.3, 0.7])
-    # Left pane title
 
     left_t3 = left_t3.container(height=height, border=0)
     right_t3 = right_t3.container(height=height, border=3)
@@ -262,9 +251,6 @@ with tab3:
             st.session_state.fig_base, use_container_width=True, theme="streamlit"
         )
         
-        right_t3.plotly_chart(
-            st.session_state.fig_cluster, use_container_width=True, theme="streamlit"
-        )
 
     with right_t3:
 
@@ -306,6 +292,68 @@ with tab3:
                 assistant_reply = response.candidates[0].content.parts[0].text
                 st.markdown(assistant_reply)
             st.session_state.messages.append({"role": "assistant", "content": assistant_reply})
+
+with tab4:
+    # Create left and right containers
+    left_t4, right_t4 = st.columns([0.3, 0.7])
+    left_t4 = left_t4.container(height=height, border=0)
+    right_t4 = right_t4.container(height=height, border=3)
+
+    left_t4.markdown("### Clustering")
+
+    # Slider for number of clusters
+    num_clusters = left_t4.slider(
+        "Select the number of clusters",
+        min_value=2,
+        max_value=10,
+        value= DEFAULT_NUM_CLUSTERS, #value= app_utilities.DEFAULT_NUM_CLUSTERS, 
+        step=1,
+        key="num_clusters",
+        on_change=perform_clustering,  
+    )
+
+    if "FA_df" not in st.session_state:
+        right_t4.write("Perform Factor Analysis to view information about a data point")
+    else: 
+        # Button to trigger clustering
+        if left_t4.button("Run Clustering"):
+            perform_clustering()
+
+
+
+        # Factor selection for dimensions
+        left_t4.markdown("### Select Factors for Each Dimension")
+
+        factors = [v["label"] for k, v in st.session_state.FA_component_dict.items()]
+
+        # First dimension selection
+        dimension_x = left_t4.selectbox(
+            "Select a factor for X-axis:", 
+            factors, 
+            key="dim_x", 
+            on_change = update_fig_cluster
+            )
+        st.session_state.dimension_x = dimension_x
+
+        # Second dimension selection (excluding first)
+        available_for_y = [f for f in factors if f != dimension_x]
+        dimension_y = left_t4.selectbox(
+            "Select a factor for Y-axis:", 
+            available_for_y, 
+            key="dim_y",
+            on_change = update_fig_cluster
+            )
+        st.session_state.dimension_y = dimension_y
+
+        left_t4.write(f"You selected **{dimension_x}** for the X-axis and **{dimension_y}** for the Y-axis.")
+
+        
+        right_t4.plotly_chart(
+            st.session_state.fig_cluster, use_container_width=True, theme="streamlit"
+            )
+        
+
+
 # debug
 # print()
 # print(st.session_state)
