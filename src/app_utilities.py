@@ -1,21 +1,26 @@
-import streamlit as st
-import pandas as pd
+from visualisation_utilities import Visualization, hex_to_rgb, rgb_to_color
+from clustering import Cluster, ClusterVisualisation, ClusterVisualisation3D
 from sklearn.decomposition import FactorAnalysis
 from sklearn.preprocessing import StandardScaler
-import json
-import numpy as np
-import google.generativeai as genai
 from google.generativeai import GenerationConfig
-from visualisation_utilities import Visualization, hex_to_rgb, rgb_to_color
-from clustering import Cluster
+import google.generativeai as genai
 import plotly.graph_objects as go
+import streamlit as st
+import pandas as pd
+import numpy as np
+import json
+
+
+DEFAULT_CUM_EXP = 3
+DEFAULT_SUM_THRESHOLD = 0.6
+DEFAULT_MAX_COMPONENTS = 14
+DEFAULT_NUM_CLUSTERS = 5
 
 
 def set_default_data():
     clear_session_state()
     load_data("./data/data-final-sample.csv")
     load_map("./data/map.json")
-
 
 def clear_session_state(skip=[]):
     for key in st.session_state.keys():
@@ -26,7 +31,6 @@ def clear_session_state(skip=[]):
         st.session_state.entity_col = "Index"
     if "FA_df" not in st.session_state:
         st.session_state.FA_df = None
-
 
 def load_new_data():
     clear_session_state(skip=["file"])
@@ -69,7 +73,6 @@ def load_data(file=None):
 
     update_df()
 
-
 def update_df(ignore_cols=[]):
     df = st.session_state.df_full.copy()
 
@@ -102,7 +105,6 @@ def update_df(ignore_cols=[]):
     if "num_clusters" in st.session_state:
         del st.session_state["num_clusters"]
 
-
 def load_map(file=None):
 
     if file is None:
@@ -117,16 +119,8 @@ def load_map(file=None):
 
     st.session_state.col_mapping = map
 
-
-DEFAULT_CUM_EXP = 3
-DEFAULT_SUM_THRESHOLD = 0.6
-DEFAULT_MAX_COMPONENTS = 14
-DEFAULT_NUM_CLUSTERS = 5
-
-
 def get_defaults():
     return DEFAULT_CUM_EXP, DEFAULT_SUM_THRESHOLD, DEFAULT_MAX_COMPONENTS, DEFAULT_NUM_CLUSTERS
-
 
 def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
 
@@ -150,15 +144,7 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
         )
 
         
-
-        #st.session_state.exp_ratio = PCA.explained_variance_ratio_ ## This is only for PCA
-        
-        # CHECK WITH AMY
-        # Calculate the variance explained by each factor
-        #factor_variance = np.var(components, axis=1)
-        # Calculate the proportion of total variance explained by each factor
-        #st.session_state.exp_ratio = explained_variance_ratio = factor_variance / np.sum(factor_variance)
-        # FA.noise_variance_ should we add that? 
+        #st.session_state.exp_ratio = PCA.explained_variance_ratio_ ## This is only for PCA 
 
         st.session_state.N = components
 
@@ -224,7 +210,7 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
 
         st.session_state.FA_component_dict = FA_component_dict
         st.session_state.FA_df = principalDf
-        # print("FA done")
+        
         vis = Visualization(
             st.session_state.FA_df,
             {k: v["label"] for k, v in st.session_state.FA_component_dict.items()},
@@ -236,20 +222,29 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
         st.session_state.FA_component_dict = {}
         st.session_state.FA_df = None
 
-
-def perform_clustering( num_clusters=DEFAULT_NUM_CLUSTERS):
+def perform_clustering(num_clusters=DEFAULT_NUM_CLUSTERS):
     if "num_clusters" in st.session_state:
             num_clusters = st.session_state.num_clusters
     else:
         num_clusters = DEFAULT_NUM_CLUSTERS
     
 
-    vis_cluster = Cluster(st.session_state.FA_df,
+    cluster = Cluster(st.session_state.FA_df,
             {k: v["label"] for k, v in st.session_state.FA_component_dict.items()},
             num_clusters
         )
-    st.session_state.fig_cluster = vis_cluster.fig
-        
+    st.session_state.u_labels, st.session_state.centroids, st.session_state.ind_col_map = cluster.u_labels , cluster.centroids,  cluster.ind_col_map
+    st.session_state.FA_df = cluster.FA_df
+
+    #vis_cluster = ClusterVisualisation(
+    #    st.session_state.FA_df,
+    #    {k: v["label"] for k, v in st.session_state.FA_component_dict.items()}, 
+    #    st.session_state.u_labels, 
+    #    st.session_state.centroids, 
+    #    st.session_state.ind_col_map
+    #)
+    #st.session_state.fig_cluster = vis_cluster.fig
+                
 def get_component_labels(text):
 
     msgs = {
@@ -276,8 +271,6 @@ def get_component_labels(text):
     )
 
     return response.candidates[0].content.parts[0].text
-
-    # return "text123"
 
 
 def display_results(component):
@@ -318,7 +311,6 @@ def display_results(component):
                 f"- ({results_dict[key]['values_bottom'][i]}) {results_dict[key]['bottom'][i]}"
             )
 
-
 def add_to_fig():
     # print("updating fig")
 
@@ -353,16 +345,30 @@ def add_to_fig():
     # st.session_state.fig = fig
 
 def update_fig_cluster():
-    
+
     if "fig_cluster" in st.session_state:
         del st.session_state["fig_cluster"]
+    
 
-    # TO DO SEPARETE THE CLUSTER FROM THE VISUALISATION
-
-
-    vis_cluster = Cluster(st.session_state.FA_df,
-            {k: v["label"] for k, v in st.session_state.FA_component_dict.items()},
-            num_clusters
+    vis_cluster = ClusterVisualisation(
+            st.session_state.FA_df,
+            {k: v["label"] for k, v in st.session_state.FA_component_dict.items()}, 
+            st.session_state.u_labels, 
+            st.session_state.centroids, 
+            st.session_state.ind_col_map
         )
     st.session_state.fig_cluster = vis_cluster.fig
+
+def update_fig_cluster3d():
+    if "fig_cluster3d" in st.session_state:
+        del st.session_state["fig_cluster3d"]
+
+    vis_cluster = ClusterVisualisation3D(
+            st.session_state.FA_df,
+            {k: v["label"] for k, v in st.session_state.FA_component_dict.items()}, 
+            st.session_state.u_labels, 
+            st.session_state.centroids, 
+            st.session_state.ind_col_map
+        )
+    st.session_state.fig_cluster3d = vis_cluster.fig
 
