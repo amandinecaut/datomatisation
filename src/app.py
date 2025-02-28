@@ -23,7 +23,9 @@ from app_utilities import (
     update_fig_cluster3d
 )
 
-#from chat import Chat
+#import chat
+from chat import Chat
+from description import CreateDescription
 
 # load secrets from .streamlit/secrets.toml
 GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY", "")
@@ -49,6 +51,14 @@ if "entity_col" not in st.session_state:
     st.session_state.entity_col = "Index"
 if "FA_df" not in st.session_state:
     st.session_state.FA_df = None
+if "u_labels" not in st.session_state:
+    st.session_state.u_labels = []
+if "centroids" not in st.session_state:
+    st.session_state.centroids = [] 
+if "ind_col_map" not in st.session_state:           
+    st.session_state.ind_col_map = {}
+
+
 
 
 # set_default_data()
@@ -257,47 +267,31 @@ with tab3:
             st.session_state.fig_base, use_container_width=True, theme="streamlit"
         )
         
+        
 
     with right_t3:
+        if st.session_state.selected_entity == None:
+            indice = 0
+        else:
+            indice = st.session_state.df_filtered.index.tolist().index(
+                st.session_state.selected_entity
+            )
+        #df = st.session_state.df_z_scores.iloc[indice, :].to_frame().T
 
-        # Initialize chat history
-        if "messages" not in st.session_state:
-            st.session_state.messages = []
+        chat = Chat()
+        chat.add_message(
+        "Please can you summarise the data for me?",
+        role="user",
+        user_only=False,
+        visible=False,
+        )
+        st.write("Wordalisation")
 
-        # Display previous messages
-        for message in st.session_state.messages:
-            with st.chat_message(message["role"]):
-                st.markdown(message["content"])
-
-        # User input
-        if user_input := st.chat_input("Say something..."):
-            st.chat_message("user").markdown(user_input)
-            st.session_state.messages.append({"role": "user", "content": user_input})
-
-            msgs = {
-                    "system_instruction": "You are a data analyst and scientist",
-                    "history": [
-                        {"role": "user", "parts": "You give a description of the data. Don't invent the data, talk only about the data you have seen.\n"
-                         "You can also ask questions about the data.\n"
-                         "If the data are missing ask the user to input the data",},
-                        {"role": "model", "parts": "Sure!"},
-                    ],
-                    "content": {"role": "user", "parts": user_input}
-                }
-
-            # Generate response
-            model = genai.GenerativeModel(
-                    model_name="gemini-1.5-flash",
-                    system_instruction=msgs["system_instruction"],
-                    generation_config=GenerationConfig(max_output_tokens=50),
-                )
-            chat = model.start_chat(history=msgs["history"])
-            response = chat.send_message(content=msgs["content"])
-
-            with st.chat_message("assistant"):
-                assistant_reply = response.candidates[0].content.parts[0].text
-                st.markdown(assistant_reply)
-            st.session_state.messages.append({"role": "assistant", "content": assistant_reply})
+        description =  CreateDescription()
+        summary = description.stream_gpt(indice)
+        st.write(summary)
+        
+            
 
 with tab4:
     # Create left and right containers

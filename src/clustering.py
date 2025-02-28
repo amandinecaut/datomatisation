@@ -95,7 +95,7 @@ class ClusterVisualisation:
         for i in st.session_state.u_labels:
             cluster_points = st.session_state.FA_df[st.session_state.FA_df['Cluster'] == i]
             color=st.session_state.ind_col_map[i]
-            print(color)
+           
             self.fig.add_trace(
                 go.Scatter(
                 x=cluster_points.loc[:, inv_map[dim_x]],
@@ -171,7 +171,6 @@ class ClusterVisualisation3D:
         for i in st.session_state.u_labels:
             cluster_points = st.session_state.FA_df[st.session_state.FA_df['Cluster'] == i]
             color=st.session_state.ind_col_map[i]
-            print(color)
             self.fig.add_trace(
                 go.Scatter3d(
                 x=cluster_points.loc[:, inv_map[dim_x]],

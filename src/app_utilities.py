@@ -91,12 +91,15 @@ def update_df(ignore_cols=[]):
         cols = st.session_state.features
     else:
         cols = [st.session_state.entity_col] + st.session_state.features
+
     st.session_state.df_filtered = df[cols].dropna()
+    
     # set the entity column as the index
     if st.session_state.entity_col != "Index":
         st.session_state.df_filtered.set_index(
             st.session_state.entity_col, inplace=True
         )
+        
 
     # delete cum_exp from session state
     if "cum_exp" in st.session_state:
@@ -133,7 +136,7 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
             components = DEFAULT_CUM_EXP
 
         # Factor Analysis
-        FA = FactorAnalysis(components)
+        FA = FactorAnalysis(n_components=components)
         principalComponents = FA.fit_transform(x)
         
         principalDf = pd.DataFrame(
@@ -170,8 +173,8 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
                 c for c in np.argsort(c2)[::-1][:n] if components[i][c] < 0
             ]
 
-            # print(f"top: {top_components}")
-            # print(f"bottom: {bottom_components}")
+            print(f"top: {top_components}")
+            print(f"bottom: {bottom_components}")
 
             # n = 5
             # top_components = np.argsort(components[i])[::-1][:n]
@@ -192,15 +195,15 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
             # text = "Features:\n"
             # text += ",\n".join(top_features + bottom_features)
 
-            text = "Top 5 features:\n"
-            text += ",\n".join(top_features)
-            text += "\n\nBottom 5 features:\n"
+           
+            text = "Bottom 5 features:\n"
             text += ", ".join(bottom_features)
-
+            text += "\n\nTop 5 features:\n"
+            text += ", ".join(top_features)
+            
             label = get_component_labels(text)
 
             FA_component_dict[f"Principal component {i}"] = {
-                #"explained_variance_ratio": round(st.session_state.exp_ratio[i], 2),
                 "label": label,
                 "top": top_features,
                 "values_top": top_values,
@@ -236,14 +239,6 @@ def perform_clustering(num_clusters=DEFAULT_NUM_CLUSTERS):
     st.session_state.u_labels, st.session_state.centroids, st.session_state.ind_col_map = cluster.u_labels , cluster.centroids,  cluster.ind_col_map
     st.session_state.FA_df = cluster.FA_df
 
-    #vis_cluster = ClusterVisualisation(
-    #    st.session_state.FA_df,
-    #    {k: v["label"] for k, v in st.session_state.FA_component_dict.items()}, 
-    #    st.session_state.u_labels, 
-    #    st.session_state.centroids, 
-    #    st.session_state.ind_col_map
-    #)
-    #st.session_state.fig_cluster = vis_cluster.fig
                 
 def get_component_labels(text):
 
@@ -252,8 +247,11 @@ def get_component_labels(text):
         "history": [
             {
                 "role": "user",
-                "parts": "Make a label from the following texts that come from factor analysis. The label should be of the form x vs y, where x is one or more adjectives that describes an entity that has the top features and y is one or more adjectives that describes an entity that has the bottom features. Output a label only.",
-                # "parts": "Make a label from the following texts that come from PCA analysis. The label should be of the form 'x vs y', but if that is not possible a single label 'x'. Output the label only.",
+                "parts": (
+                    "Make a label from the following texts that come from factor analysis."
+                    "The label must strictly follow the format: 'bottom features vs top features'. "
+                    "The label should be of the form x vs y, where x is one or more adjectives that describes an entity that has the bottom features and y is one or more adjectives that describes an entity that has the top features."
+                    "Output a label only."),
             },
             {"role": "model", "parts": "Sure!"},
         ],
@@ -320,6 +318,7 @@ def add_to_fig():
     )
 
     df = st.session_state.df_z_scores.iloc[ind, :].to_frame().T
+     
 
     color = st.get_option("theme.primaryColor")
     if color is None:
@@ -333,11 +332,7 @@ def add_to_fig():
             selector={"name": f"{col} selected"}, x=df[col]
         )
 
-        #st.session_state.fig_base.update_traces(
-        #    selector={"name": f"{col} text"},
-        #    text=f"<span style=''>{df[col].name}: {df[col].values[0]:.2f} </span>",
-        #)
-        
+
 
     if "fig" in st.session_state:
         del st.session_state["fig"]

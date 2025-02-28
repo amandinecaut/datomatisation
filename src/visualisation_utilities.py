@@ -11,7 +11,6 @@ def hex_to_rgb(hex_color: str) -> tuple:
         hex_color = hex_color * 2
     return int(hex_color[0:2], 16), int(hex_color[2:4], 16), int(hex_color[4:6], 16)
 
-
 def rgb_to_color(rgb_color: tuple, opacity=1):
     return f"rgba{(*rgb_color, opacity)}"
 
@@ -45,7 +44,7 @@ class Visualization:
             df = self.df_z_scores.sample(sample_size)
         else:
             df = self.df_z_scores
-        print(df)
+        
 
         # add a scatter plot for each principal component
         for i, col in enumerate(df.columns):
@@ -90,6 +89,7 @@ class Visualization:
                     name=f"{col} selected",
                 )    
             )
+    
             
 
 
