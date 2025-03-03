@@ -160,18 +160,23 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
 
             n = 1
             c2 = components[i] ** 2  # np.abs(components[i])
+            
             while sum(c2[np.argsort(c2)[::-1][:n]]) < threshold:
                 n += 1
             # make n even
             if n % 2 != 0:
                 n += 1
 
-            top_components = [
-                c for c in np.argsort(c2)[::-1][:n] if components[i][c] > 0
-            ]
-            bottom_components = [
-                c for c in np.argsort(c2)[::-1][:n] if components[i][c] < 0
-            ]
+            #top_components = [
+            #    c for c in np.argsort(c2)[::-1][:n] if components[i][c] > 0
+            #]
+            #bottom_components = [
+            #    c for c in np.argsort(c2)[::-1][:n] if components[i][c] < 0
+            #]
+            
+            top_components = np.argsort(components[i])[::-1][:n]
+            bottom_components = np.argsort(components[i])[:n]
+
 
             print(f"top: {top_components}")
             print(f"bottom: {bottom_components}")
