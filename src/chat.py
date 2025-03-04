@@ -5,14 +5,14 @@ from types import GeneratorType
 import pandas as pd
 import json
 import google.generativeai as genai
-
+from description import *
 
 openai.api_type = "azure"
 
 
 class Chat:
 
-    def __init__(self):
+    def __init__(self, state="empty"):
 
         if st.session_state.selected_entity == None:
             self.indice = 0
@@ -20,17 +20,18 @@ class Chat:
             self.indice = st.session_state.df_filtered.index.tolist().index(
                 st.session_state.selected_entity
             )
-        
+
+        st.session_state.chat_state = state
+        self.state = st.session_state.chat_state
+
         if "messages_to_display" not in st.session_state:
             st.session_state.messages_to_display = []
             self.messages_to_display = st.session_state.messages_to_display
         else:
             self.messages_to_display = st.session_state.messages_to_display
+        
 
         super().__init__()
-
-    def test_indice(self):
-        return self.indice
 
 
     def instruction_messages(self):
@@ -45,7 +46,6 @@ class Chat:
         """
         message = {"role": role, "content": content}
         self.messages_to_display.append(message)
-
 
     def handle_input(self, input):
         """
@@ -81,7 +81,7 @@ class Chat:
         st.expander("Chat transcript", expanded=False).write(messages)
 
 
-        converted_msgs = convert_messages_format(messages)
+        converted_msgs = description.convert_messages_format(messages)
 
         genai.configure(api_key=GEMINI_API_KEY)
         model = genai.GenerativeModel(
@@ -137,50 +137,17 @@ class Chat:
             group = list(group)
 
             if key == "assistant":
-                avatar = "owl.jpg"
+                #avatar = st.image('owl.jpg')
+                avatar = "👩‍🎤"
             else:
-                try:
-                    avatar = st.session_state.user_info["picture"]
-                except:
-                    avatar = None
+                avatar = None
 
             message = st.chat_message(name=key, avatar=avatar)
             with message:
                 for message in group:
                     content = message["content"]
                     self.display_content(content)
-
-    def save_state(self):
-        """
-        Saves the conversation to session state.
-        """
-        st.session_state.messages_to_display = self.messages_to_display
-        st.session_state.chat_state = self.state
-        
-
-    def instruction_messages(self):
-        """
-        Instruction for the agent.
-        """
-        first_messages = [
-            {"role": "system", "content": "You are data analyst."},
-            {
-                "role": "user",
-                "content": (
-                    "After these messages you will be interacting with a user of the platform. "
-                    f"The user has selected some data, and the conversation will be about them. "
-                    "You will receive relevant information to answer a user's questions and then be asked to provide a response. "
-                    "All user messages will be prefixed with 'User:' and enclosed with ```. "
-                    "When responding to the user, speak directly to them. "
-                    "Use the information provided before the query  to provide 2 sentence answers."
-                    " Do not deviate from this information or provide additional information that is not in the text returned by the functions."
-                ),
-            },
-        ]
-        return first_messages
-
     
-
     def get_input(self):
         """
         Get input from streamlit."""
@@ -195,43 +162,75 @@ class Chat:
 
             self.handle_input(x)
 
-def testfunc():
-    # Initialize chat history
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+    def save_state(self):
+        """
+        Saves the conversation to session state.
+        """
+        st.session_state.messages_to_display = self.messages_to_display
+        st.session_state.chat_state = self.state
 
-    # Display previous messages
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+class EntityChat(Chat):
+    def __init__(self, state="empty"):
+        if st.session_state.selected_entity == None:
+            self.indice = 0
+        else:
+            self.indice = st.session_state.df_filtered.index.tolist().index(
+                st.session_state.selected_entity
+            )
+      
+        super().__init__(state=state)
 
-    # User input
-    if user_input := st.chat_input("Say something..."):
-        st.chat_message("user").markdown(user_input)
-        st.session_state.messages.append({"role": "user", "content": user_input})
+    def get_input(self):
+        """
+        Get input from streamlit."""
 
-        msgs = {
-                "system_instruction": "You are a data analyst and scientist",
-                    "history": [
-                        {"role": "user", "parts": "You give a description of the data. Don't invent the data, talk only about the data you have seen.\n"
-                         "You can also ask questions about the data.\n"
-                         "If the data are missing ask the user to input the data",},
-                        {"role": "model", "parts": "Sure!"},
-                    ],
-                    "content": {"role": "user", "parts": user_input}
-                }
-
-        # Generate response
-        model = genai.GenerativeModel(
-                    model_name="gemini-1.5-flash",
-                    system_instruction=msgs["system_instruction"],
-                    generation_config=GenerationConfig(max_output_tokens=50),
+        if x := st.chat_input(
+            placeholder=f"What else would you like to know about the entity {self.indice}?"
+        ):
+            if len(x) > 500:
+                st.error(
+                    f"Your message is too long ({len(x)} characters). Please keep it under 500 characters."
                 )
-        chat = model.start_chat(history=msgs["history"])
-        response = chat.send_message(content=msgs["content"])
 
-        with st.chat_message("assistant"):
-            assistant_reply = response.candidates[0].content.parts[0].text
-            st.markdown(assistant_reply)
+            self.handle_input(x)
 
-        st.session_state.messages.append({"role": "assistant", "content": assistant_reply})
+    def instruction_messages(self):
+        """
+        Instruction for the agent.
+        """
+        first_messages = [
+            {"role": "system", "content": "You are a UK-based football scout."},
+            {
+                "role": "user",
+                "content": (
+                    "After these messages you will be interacting with a user of the data analysis platform. "
+                    f"The user has selected the entity {self.indice}, and the conversation will be about them. "
+                    "You will receive relevant information to answer a user's questions and then be asked to provide a response. "
+                    "All user messages will be prefixed with 'User:' and enclosed with ```. "
+                    "When responding to the user, speak directly to them. "
+                    "Use the information provided before the query  to provide 2 sentence answers."
+                    " Do not deviate from this information or provide additional information that is not in the text returned by the functions."
+                ),
+            },
+        ]
+        return first_messages
+
+    def get_relevant_info(self, query):
+
+        # If there is no query then use the last message from the user
+        if query == "":
+            query = self.visible_messages[-1]["content"]
+
+        ret_val = "Here is a description of the player in terms of data: \n\n"
+        describe =  CreateDescription()
+        summary = describe.stream_gpt(self.indice)
+
+        
+        ret_val += describe.synthesize_text()
+        print(describe.synthesize_text())
+
+        ret_val += f"\n\nIf none of this information is relevent to the users's query then use the information below to remind the user about the chat functionality: \n"
+        ret_val += "This chat can answer questions about a player's statistics and what they mean for how they play football."
+        ret_val += "The user can select the player they are interested in using the menu to the left."
+
+        return ret_val

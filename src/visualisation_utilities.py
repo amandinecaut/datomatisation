@@ -49,10 +49,10 @@ class Visualization:
         # Ensure correct order by using FA_label_map
         df = df[list(self.FA_label_map.values())]
         df_entity = self.df_z_scores.iloc[0, :].to_frame().T[list(self.FA_label_map.values())]
-        print(df_entity)
+        
         # add a scatter plot for each principal component
         for i, col in enumerate(df.columns):
-            print(i, col)
+            
 
             self.fig.add_trace(
                 go.Scatter(
@@ -81,7 +81,7 @@ class Visualization:
 
         #  Add entity points in correct order
         for i, col in enumerate(df_entity.columns):
-            print('entity', i, col)
+            
             self.fig.add_trace(
                 go.Scatter(
                     x=df_entity[col],

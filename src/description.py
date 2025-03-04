@@ -7,6 +7,7 @@ import google.generativeai as genai
 import streamlit as st
 import numpy as np
 import pandas as pd
+import re
 
 import json
 from scipy.stats import zscore
@@ -168,33 +169,6 @@ class CreateDescription(Description):
 
         return intro
 
-    def get_1_label(self, text):
-
-        msgs = {
-            "system_instruction": "You are a data analyst and scientist",
-            "history": [
-                {
-                "role": "user",
-                "parts": (
-                    "Determine in one word the subject."
-                    "The will be x vs y, you ouput only 1 word from it. "
-                    "Output a label only."),
-                },
-                {"role": "model", "parts": "Sure!"},
-                ],
-            "content": {"role": "user", "parts": text},
-            }
-        model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash",
-            system_instruction=msgs["system_instruction"],
-            generation_config=GenerationConfig(max_output_tokens=150),
-            )
-        chat = model.start_chat(history=msgs["history"])
-        response = chat.send_message(
-            content=msgs["content"],
-            )
-        return response.candidates[0].content.parts[0].text
-
     def describe_level(self, value):
         thresholds=[-2, -1, -0.5, 0.5, 1, 2]
         words = [
@@ -225,8 +199,6 @@ class CreateDescription(Description):
         # If no match (value exceeds the largest threshold), return the last word
         return words[-1]
 
- 
-
     
     def get_description(self, indice):
         self.FA_df = st.session_state.FA_df.apply(zscore, nan_policy="omit")
@@ -237,15 +209,19 @@ class CreateDescription(Description):
             component = st.session_state.FA_component_dict.get(i, {})
             if not component:  # Skip if component is missing
                 continue
-
-            label = self.get_1_label(component.get("label", ""))
+            
+            text_left, text_right = self.split_qualities(component['label'])
 
             text += 'The entity '
         
             value = self.FA_df[i].values[0]
         
             if not np.isnan(value):
-                text += self.describe_level(value) + label + '. '
+                if value >= 0:
+                    text += self.describe_level(value) + text_right + '. '
+                else:
+                    text += self.describe_level(value) + text_left + '. '
+
 
                 if value > 1:
                     text += 'In particular, the entity says that ' + component["top"][0] + '. '
@@ -271,3 +247,61 @@ class CreateDescription(Description):
             "Finally, summarise exactly how the entity compares to others in the same position. "
         )
         return [{"role": "user", "content": prompt}]
+
+    def describe_level_cluster(self, value):
+        thresholds=[-3,-2,-1.5, -1, -0.5, 0.5, 1,1.5, 2,3]
+        words = [
+        " extremely low on ",    
+        " very low on ",         
+        " quite low on ",       
+        " relatively low on ",   
+        " slightly low on ",     
+        " normal on ",           
+        " slightly high on ",    
+        " relatively high on ", 
+        " quite high on ",       
+        " very high on ",       
+        " extremely high on "  
+        ]
+        return self.describe(thresholds, words, value)
+    
+    
+    def split_qualities(self, text):
+        # Use a regular expression to split on " vs " (case-insensitive)
+        parts = re.split(r"\s+vs\.?\s+", text, flags=re.IGNORECASE)
+
+        # Ensure we have two sides
+        if len(parts) != 2:
+            raise ValueError("Text must contain 'vs' separating two sides.")
+
+        text1, text2 = parts[0].strip(), parts[1].strip()
+
+        return text1, text2
+
+
+    def get_cluster_label(self, text):
+
+        msgs = {
+            "system_instruction": "You are a data analyst and scientist",
+            "history": [
+                {
+                "role": "user",
+                "parts": (
+                    "You name a cluster."
+                    "The name has to be short and smooth."
+                    ),
+                },
+                {"role": "model", "parts": "Sure!"},
+                ],
+            "content": {"role": "user", "parts": text},
+            }
+        model = genai.GenerativeModel(
+            model_name="gemini-1.5-flash",
+            system_instruction=msgs["system_instruction"],
+            generation_config=GenerationConfig(max_output_tokens=150),
+            )
+        chat = model.start_chat(history=msgs["history"])
+        response = chat.send_message(
+            content=msgs["content"],
+            )
+        return response.candidates[0].content.parts[0].text

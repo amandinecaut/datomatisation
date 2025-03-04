@@ -178,8 +178,8 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
             bottom_components = np.argsort(components[i])[:n]
 
 
-            print(f"top: {top_components}")
-            print(f"bottom: {bottom_components}")
+            #print(f"top: {top_components}")
+            #print(f"bottom: {bottom_components}")
 
             # n = 5
             # top_components = np.argsort(components[i])[::-1][:n]

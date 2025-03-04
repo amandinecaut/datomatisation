@@ -1,4 +1,5 @@
 from scipy.spatial.distance import euclidean
+from scipy.spatial.distance import cdist
 import matplotlib.patches as mpatches
 from sklearn.cluster import KMeans
 import plotly.graph_objects as go
@@ -7,7 +8,9 @@ import pandas as pd
 import numpy as np
 import plotly
 
-
+import description
+from description import CreateDescription
+    
 class Cluster:
     def __init__(self, FA_df, FA_label_map, num_clusters):
         cols = [k for k in FA_label_map.keys()]
@@ -34,30 +37,65 @@ class Cluster:
         
         # Store centroids and unique labels
         self.centroids = kmeans.cluster_centers_
-        #self.u_labels = np.unique(labels)
+        self.list_cluster_name = self.name_the_cluster(self.centroids)
+        
         self.u_labels = self.FA_df['Cluster'].unique()
 
-        # Find the closest point to each cluster center
-        #self.closest_pt_idx = self.find_closest_points(kmeans)
 
         # Create cluster color map
-        #self.ind_col_map = {label: color for label, color in zip(self.u_labels, sns.color_palette('tab20', len(self.u_labels)))}
         self.ind_col_map = {label: color for label, color in zip(self.u_labels, plotly.colors.qualitative.Set1[:len(self.u_labels)])}
         self.ind_col_map = dict(sorted(self.ind_col_map.items()))
 
         st.session_state.u_labels, st.session_state.centroids, st.session_state.ind_col_map = self.u_labels , self.centroids,  self.ind_col_map
         st.session_state.FA_df = self.FA_df
+        st.session_state.list_cluster_name =  self.list_cluster_name
+
 
        
+    def name_the_cluster(self, centroids):
+        create_description = CreateDescription()
+        liste_name_dim = []
+        for _ , details in st.session_state.FA_component_dict.items():
+            liste_name_dim.append(details['label'])
+        
+        list_description_all_cluster = []
+
+        for center in self.centroids:
+            describe_centroid = []
+            for dim in np.arange(len(center)):
+            
+                
+                value_dim = center[dim]
+                
+                text_dim = create_description.describe_level_cluster(value_dim)
+                
+                text_low, text_high = create_description.split_qualities(liste_name_dim[dim])
+
+                if value_dim >= 0:
+                    text_dim += text_high
+                else:
+                    text_dim += text_low
+                describe_centroid.append(text_dim)
+            text = ", ".join(describe_centroid)  
+            
+            text = create_description.get_cluster_label(text)
+            list_description_all_cluster.append(text)
+        return list_description_all_cluster
+
 
     def find_closest_points(self, kmeans):
         """Find indices of the closest points to each cluster center."""
         closest_pt_idx = []
         for iclust in range(kmeans.n_clusters):
-            cluster_pts = self.df[kmeans.labels_ == iclust]
             cluster_pts_indices = np.where(kmeans.labels_ == iclust)[0]
+
+
+            cluster_pts = self.FA_df.iloc[cluster_pts_indices]
             cluster_cen = kmeans.cluster_centers_[iclust]
-            min_idx = np.argmin([euclidean(self.df[idx], cluster_cen) for idx in cluster_pts_indices])
+
+            # Efficient distance calculation
+            distances = cdist(cluster_pts, [cluster_cen])
+            min_idx = np.argmin(distances)
             closest_pt_idx.append(cluster_pts_indices[min_idx])
 
         return closest_pt_idx
@@ -70,6 +108,7 @@ class ClusterVisualisation:
         self.u_labels = u_labels
         self.centroids = centroids  
         self.ind_col_map = ind_col_map
+        self.list_cluster_name = st.session_state.list_cluster_name
    
         self.fig = go.Figure()
         self.set_visualization_cluster()
@@ -90,8 +129,6 @@ class ClusterVisualisation:
 
         inv_map = {st.session_state.FA_component_dict[k]["label"]: k for k in st.session_state.FA_component_dict.keys()}
         
-
-
         for i in st.session_state.u_labels:
             cluster_points = st.session_state.FA_df[st.session_state.FA_df['Cluster'] == i]
             color=st.session_state.ind_col_map[i]
@@ -102,14 +139,11 @@ class ClusterVisualisation:
                 y=cluster_points.loc[:, inv_map[dim_y]],
                 mode='markers',
                 marker=dict(color=st.session_state.ind_col_map[i], size = 2, opacity=0.15),
-                name=f'Cluster {i}'
+                #name=f'Cluster {i}'
+                name = self.list_cluster_name[i]
                 )
             )
 
-        # inv_map[dim_x]
-        # gives "Principal Component 1"
-        # int(inv_map[dim_x].split()[-1])
-        # will return 1
         
         # Plot centroids
         self.fig.add_trace(
@@ -177,8 +211,9 @@ class ClusterVisualisation3D:
                 y=cluster_points.loc[:, inv_map[dim_y]],
                 z=cluster_points.loc[:, inv_map[dim_z]],
                 mode='markers',
-                marker=dict(color=st.session_state.ind_col_map[i], size = 1, opacity=0.15),
-                name=f'Cluster {i}'
+                marker=dict(color=st.session_state.ind_col_map[i], size = 2, opacity=0.15),
+                #name=f'Cluster {i}'
+                name = self.list_cluster_name[i]
                 )
             )
 
@@ -194,7 +229,7 @@ class ClusterVisualisation3D:
             y=st.session_state.centroids[:, int(inv_map[dim_y].split()[-1])],
             z=st.session_state.centroids[:, int(inv_map[dim_z].split()[-1])],   
             mode='markers',
-            marker=dict(color='black', size=5, symbol='x'),
+            marker=dict(color='black', size=3, symbol='x'),
             name='Centroids'
         ))
 

@@ -23,8 +23,8 @@ from app_utilities import (
     update_fig_cluster3d
 )
 
-#import chat
-from chat import Chat
+
+from chat import EntityChat
 from description import CreateDescription
 
 # load secrets from .streamlit/secrets.toml
@@ -276,20 +276,23 @@ with tab3:
             indice = st.session_state.df_filtered.index.tolist().index(
                 st.session_state.selected_entity
             )
-        #df = st.session_state.df_z_scores.iloc[indice, :].to_frame().T
-
-        chat = Chat()
-        chat.add_message(
-        "Please can you summarise the data for me?",
-        role="user",
-        user_only=False,
-        visible=False,
-        )
+        
         st.write("Wordalisation")
-
-        description =  CreateDescription()
-        summary = description.stream_gpt(indice)
-        st.write(summary)
+        chat = EntityChat()
+        if chat.state == "empty":
+            chat.add_message(
+            "Please can you summarise the data for me?",
+            role="user",
+            user_only=False,
+            visible=False,
+            )
+            description =  CreateDescription()
+            summary = description.stream_gpt(indice)
+            chat.add_message(summary)
+            chat.state = "default"
+        chat.get_input()
+        chat.display_messages()
+        chat.save_state()
         
             
 
@@ -314,11 +317,13 @@ with tab4:
 
     if st.session_state.FA_df is None:
         right_t4.write("Perform Factor Analysis to view information about a data point")
+
     else: 
         # Button to trigger clustering
         if left_t4.button("Run Clustering"):
             perform_clustering()
             right_t4.write("Clustering complete")
+            
             
 
         # Factor selection for dimensions
