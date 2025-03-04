@@ -287,18 +287,18 @@ class CreateDescription(Description):
                 {
                 "role": "user",
                 "parts": (
-                    "You name a cluster."
-                    "The name has to be short and smooth."
+                    "You label a cluster."
+                    "The label has to be short and smooth."
+                    "Output a label only."
                     ),
                 },
-                {"role": "model", "parts": "Sure!"},
                 ],
             "content": {"role": "user", "parts": text},
             }
         model = genai.GenerativeModel(
             model_name="gemini-1.5-flash",
             system_instruction=msgs["system_instruction"],
-            generation_config=GenerationConfig(max_output_tokens=150),
+            generation_config=GenerationConfig(max_output_tokens=5),
             )
         chat = model.start_chat(history=msgs["history"])
         response = chat.send_message(

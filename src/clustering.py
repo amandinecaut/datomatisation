@@ -151,7 +151,7 @@ class ClusterVisualisation:
             x=st.session_state.centroids[:, int(inv_map[dim_x].split()[-1])],
             y=st.session_state.centroids[:, int(inv_map[dim_y].split()[-1])],
             mode='markers',
-            marker=dict(color='black', size=3, symbol='x'),
+            marker=dict(color='black', size=2, symbol='x'),
             name='Centroids'
         ))
 
@@ -163,13 +163,15 @@ class ClusterVisualisation:
         #    first_legend=ax.legend(title='Cluster',bbox_to_anchor=(1.02, 1),handles=legend_list, loc='upper left', borderaxespad=0)
         
         # Update layout
+    
         self.fig.update_layout(
             title='K-Means Clustering Visualization',
             xaxis_title= dim_x,
             yaxis_title= dim_y,
             legend_title='Clusters',
             width=900,
-            height=900
+            height=900,
+            legend= {'itemsizing': 'constant'}
         )
 
 class ClusterVisualisation3D:
@@ -180,7 +182,7 @@ class ClusterVisualisation3D:
         self.centroids = centroids  
         self.ind_col_map = ind_col_map
         self.list_cluster_name = st.session_state.list_cluster_name
-        
+   
         self.fig = go.Figure()
         self.set_visualization_cluster3D()
 
@@ -213,7 +215,6 @@ class ClusterVisualisation3D:
                 z=cluster_points.loc[:, inv_map[dim_z]],
                 mode='markers',
                 marker=dict(color=st.session_state.ind_col_map[i], size = 2, opacity=0.15),
-                #name=f'Cluster {i}'
                 name = self.list_cluster_name[i]
                 )
             )
@@ -230,7 +231,7 @@ class ClusterVisualisation3D:
             y=st.session_state.centroids[:, int(inv_map[dim_y].split()[-1])],
             z=st.session_state.centroids[:, int(inv_map[dim_z].split()[-1])],   
             mode='markers',
-            marker=dict(color='black', size=3, symbol='x'),
+            marker=dict(color='black', size=2, symbol='x'),
             name='Centroids'
         ))
 
@@ -241,15 +242,17 @@ class ClusterVisualisation3D:
         #    legend_list.append(mpatches.Patch(color=ind_col_map[key],label=f'$Cluster {key}$'))
         #    first_legend=ax.legend(title='Cluster',bbox_to_anchor=(1.02, 1),handles=legend_list, loc='upper left', borderaxespad=0)
         
+        
         # Update layout
         self.fig.update_layout(
             title='K-Means Clustering 3D Visualization',
-        scene=dict(
+            scene=dict(
             xaxis_title=dim_x,
             yaxis_title=dim_y,
             zaxis_title=dim_z
             ),
         legend_title='Clusters',
         width=900,
-        height=900
+        height=900,
+        legend= {'itemsizing': 'constant'}
         )
