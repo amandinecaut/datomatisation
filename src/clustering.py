@@ -179,7 +179,8 @@ class ClusterVisualisation3D:
         self.u_labels = u_labels
         self.centroids = centroids  
         self.ind_col_map = ind_col_map
-   
+        self.list_cluster_name = st.session_state.list_cluster_name
+        
         self.fig = go.Figure()
         self.set_visualization_cluster3D()
 
