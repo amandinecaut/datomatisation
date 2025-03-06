@@ -182,7 +182,6 @@ class CreateDescription(Description):
             ]
         return self.describe(thresholds, words, value)
 
-
     def describe(self, thresholds, words, value):
         """
         thresholds = upper bound of each range in ascending order
@@ -199,7 +198,6 @@ class CreateDescription(Description):
         # If no match (value exceeds the largest threshold), return the last word
         return words[-1]
 
-    
     def get_description(self, indice):
         self.FA_df = st.session_state.FA_df.apply(zscore, nan_policy="omit")
         self.FA_df = self.FA_df.iloc[indice, :].to_frame().T
@@ -230,7 +228,6 @@ class CreateDescription(Description):
             
 
         return text
-
 
     def synthesize_text(self):
 
@@ -264,8 +261,7 @@ class CreateDescription(Description):
         " extremely high on "  
         ]
         return self.describe(thresholds, words, value)
-    
-    
+       
     def split_qualities(self, text):
         # Use a regular expression to split on " vs " (case-insensitive)
         parts = re.split(r"\s+vs\.?\s+", text, flags=re.IGNORECASE)
@@ -277,7 +273,6 @@ class CreateDescription(Description):
         text1, text2 = parts[0].strip(), parts[1].strip()
 
         return text1, text2
-
 
     def get_cluster_label(self, text):
 

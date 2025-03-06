@@ -1,4 +1,4 @@
-from visualisation_utilities import Visualization, hex_to_rgb, rgb_to_color
+from visualisation_utilities import Visualisation, hex_to_rgb, rgb_to_color
 from clustering import Cluster, ClusterVisualisation, ClusterVisualisation3D
 from sklearn.decomposition import FactorAnalysis
 from sklearn.preprocessing import StandardScaler
@@ -219,7 +219,7 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
         st.session_state.FA_component_dict = FA_component_dict
         st.session_state.FA_df = principalDf
         
-        vis = Visualization(
+        vis = Visualisation(
             st.session_state.FA_df,
             {k: v["label"] for k, v in st.session_state.FA_component_dict.items()},
         )
@@ -243,8 +243,7 @@ def perform_clustering(num_clusters=DEFAULT_NUM_CLUSTERS):
         )
     st.session_state.u_labels, st.session_state.centroids, st.session_state.ind_col_map = cluster.u_labels , cluster.centroids,  cluster.ind_col_map
     st.session_state.FA_df = cluster.FA_df
-
-                
+            
 def get_component_labels(text):
 
     msgs = {
@@ -274,7 +273,6 @@ def get_component_labels(text):
     )
 
     return response.candidates[0].content.parts[0].text
-
 
 def display_results(component):
     results_dict = st.session_state.FA_component_dict
@@ -372,3 +370,19 @@ def update_fig_cluster3d():
         )
     st.session_state.fig_cluster3d = vis_cluster.fig
 
+def display_cluster_color(cluster_name, color, size=40):
+    square_html = f"""
+    <div style="
+        display: flex; 
+        align-items: center; 
+        gap: 10px;">
+        <div style="
+            width: {size}px; 
+            height: {size}px; 
+            background-color: {color}; 
+            border-radius: 10px;">
+        </div>
+        <span style="font-size: 18px;">{cluster_name}</span>
+    </div>
+    """
+    st.markdown(square_html, unsafe_allow_html=True)

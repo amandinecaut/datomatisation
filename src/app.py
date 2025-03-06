@@ -1,5 +1,5 @@
 from clustering import Cluster, ClusterVisualisation, ClusterVisualisation3D
-from visualisation_utilities import Visualization
+from visualisation_utilities import Visualisation
 from google.generativeai import GenerationConfig
 import google.generativeai as genai
 import plotly.graph_objects as go
@@ -20,7 +20,8 @@ from app_utilities import (
     set_default_data,
     add_to_fig,
     update_fig_cluster,
-    update_fig_cluster3d
+    update_fig_cluster3d,
+    display_cluster_color
 )
 
 
@@ -42,21 +43,21 @@ st.set_page_config(layout="wide")
 
 default_cum_exp, default_sum_threshold, default_max_components, default_num_clusters = get_defaults()
 
-height = 1300  # height of the container
+height = 1500  # height of the container
 DEFAULT_DATA = "./data/data-final-sample.csv"
 DEFAULT_MAP = "./data/map.json"
 
 # track interaction prompt
 if "entity_col" not in st.session_state:
     st.session_state.entity_col = "Index"
+st.session_state.setdefault("u_labels", None)
+st.session_state.setdefault("centroids", None)
+st.session_state.setdefault("ind_col_map", None)
+st.session_state.setdefault("selected_entity", None)
+st.session_state.setdefault("FA_component_dict", None)
 if "FA_df" not in st.session_state:
-    st.session_state.FA_df = None
-if "u_labels" not in st.session_state:
-    st.session_state.u_labels = []
-if "centroids" not in st.session_state:
-    st.session_state.centroids = [] 
-if "ind_col_map" not in st.session_state:           
-    st.session_state.ind_col_map = {}
+    st.session_state.FA_df = pd.DataFrame()
+    
 
 
 
@@ -420,6 +421,7 @@ with tab4:
                     st.session_state.fig_cluster3d, use_container_width=True, theme="streamlit"
                 )
 
+
         else: 
             ### HERE FOR 2D PLOT ONLY WHEN THERE IS ONLY 2 FACTORS
 
@@ -444,7 +446,7 @@ with tab4:
       
             left_t4.write(f"You selected **{dimension_x}** for the X-axis and **{dimension_y}** for the Y-axis.")
 
-            if left_t4.button("Run Visualization"):
+            if left_t4.button("Run Visualisation"):
                 vis_cluster = ClusterVisualisation(
                     st.session_state.FA_df,
                     {k: v["label"] for k, v in st.session_state.FA_component_dict.items()}, 
@@ -457,6 +459,23 @@ with tab4:
                 right_t4.plotly_chart(
                 st.session_state.fig_cluster, use_container_width=True, theme="streamlit"
                 )
+
+        
+    with right_t4:
+        # Cluster description
+        st.markdown("<h3><b>Description of each cluster</b></h3>", unsafe_allow_html=True)
+        list_cluster_name = st.session_state.list_cluster_name
+        list_color_cluster = st.session_state.ind_col_map
+        list_description_cluster = st.session_state.list_description_cluster
+
+        for i in list_color_cluster:
+
+            display_cluster_color(list_cluster_name [i], list_color_cluster[i])
+            st.write(list_description_cluster[i])
+
+
+            #Print the color of the cluster + the name 
+            # print the description of the cluster by chat gpt
 
         
 
