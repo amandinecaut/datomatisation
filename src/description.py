@@ -14,7 +14,6 @@ from scipy.stats import zscore
 
 
 
-
 class Description(ABC):
 
     def __init__(self):
@@ -128,7 +127,6 @@ class Description(ABC):
         answer = response.text
 
         return answer
-
 
 
 class CreateDescription(Description):

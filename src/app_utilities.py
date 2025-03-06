@@ -208,6 +208,7 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
             
             label = get_component_labels(text)
 
+
             FA_component_dict[f"Principal component {i}"] = {
                 "label": label,
                 "top": top_features,
@@ -225,10 +226,12 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
         )
         st.session_state.fig_base = vis.fig
         st.session_state.df_z_scores = vis.df_z_scores
-
+        
     else:
         st.session_state.FA_component_dict = {}
         st.session_state.FA_df = None
+        
+
 
 def perform_clustering(num_clusters=DEFAULT_NUM_CLUSTERS):
     if "num_clusters" in st.session_state:
@@ -386,3 +389,44 @@ def display_cluster_color(cluster_name, color, size=40):
     </div>
     """
     st.markdown(square_html, unsafe_allow_html=True)
+
+def create_QandA_csv():
+    FA_component_dict = st.session_state.FA_component_dict
+    text = []
+    for _ , details in FA_component_dict.items():
+        text.append(details['label'])
+    return get_QandA(text)
+
+
+def get_QandA(text):
+
+    msgs = {
+        "system_instruction": "You are a data analyst and scientist",
+        "history": [
+            {
+                "role": "user",
+                "parts": (
+                    "Deduce question and answer pairs"
+                    "You have a list of each componant that are deduce from the factor analysis"
+                    "The question should be about each componant, and the answer the explanation "
+                    "The question and answer are deduce from the factor analysis"
+                    "Make a dataframe with two columns: one column is 'User' for the question, one column is 'Assistant. for the answers"
+                    "The output is only the dataframe"
+                    ),
+            },
+            {"role": "model", "parts": "Sure!"},
+        ],
+        "content": {"role": "user", "parts": text},
+    }
+
+    model = genai.GenerativeModel(
+        model_name="gemini-1.5-flash",
+        system_instruction=msgs["system_instruction"],
+        generation_config=GenerationConfig(max_output_tokens=1000),
+    )
+    chat = model.start_chat(history=msgs["history"])
+    response = chat.send_message(
+        content=msgs["content"],
+    )
+
+    return response.candidates[0].content.parts[0].text

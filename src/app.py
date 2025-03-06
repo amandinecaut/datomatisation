@@ -21,7 +21,8 @@ from app_utilities import (
     add_to_fig,
     update_fig_cluster,
     update_fig_cluster3d,
-    display_cluster_color
+    display_cluster_color,
+    create_QandA_csv
 )
 
 
@@ -69,7 +70,7 @@ if "FA_df" not in st.session_state:
 # Add and app header
 st.title("Automated Factor Analysis pipeline")
 
-tab1, tab2, tab3, tab4 = st.tabs(["Load data", "Factor Analysis", "View", "Clustering"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["Load data", "Factor Analysis", "View", "Clustering", "Entity"])
 
 with tab1:
 
@@ -235,8 +236,16 @@ with tab2:
         # print sum over columns of st.session_state.components
         # print(np.linalg.norm(st.session_state.components, axis=0))
 
-        expander_exp = right_t2.expander("Factors explained variance")
+        #expander_exp = right_t2.expander("Factors explained variance")
         #expander_exp.write(st.session_state.exp_ratio)
+
+        right_t2.markdown("---")
+
+        right_t2.write("## Question and Answer pairs")
+        QandA_df = create_QandA_csv()
+        
+        st.write(QandA_df)
+
     else:
         pass
 
@@ -477,7 +486,31 @@ with tab4:
             #Print the color of the cluster + the name 
             # print the description of the cluster by chat gpt
 
-        
+with tab5:
+    left_t5, right_t5 = st.columns([0.3, 0.7])
+    left_t5 = left_t5.container(height=height, border=0)
+    right_t5 = right_t5.container(height=height, border=3)
+
+    left_t5.markdown("### Select entity")
+
+    if "df_full" not in st.session_state:
+        right_t5.write("Load data to view information about a data point")
+    elif st.session_state.FA_df is None:
+        right_t5.write("Perform Factor Analysis to view information about a data point")
+    else:
+
+        # drop down with entity column, default to first column
+        entity = left_t5.selectbox(
+            label="Select entity",
+            options=(st.session_state.df_filtered.index.to_list()),
+            key="selected_entity",
+            index=0,
+            on_change=add_to_fig,
+        )
+
+        right_t5.markdown("# Entity description")
+        right_t5.markdown("## In progress")
+
 
 
 # debug
