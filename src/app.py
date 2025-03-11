@@ -1,5 +1,5 @@
-from clustering import Cluster, ClusterVisualisation, ClusterVisualisation3D
-from visualisation_utilities import Visualisation
+from visualisation_utilities import Visualisation, ClusterVisualisation, ClusterVisualisation3D
+from clustering import Cluster
 from google.generativeai import GenerationConfig
 import google.generativeai as genai
 import plotly.graph_objects as go
@@ -7,6 +7,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import json
+
 
 import app_utilities
 from app_utilities import (
@@ -22,7 +23,8 @@ from app_utilities import (
     update_fig_cluster,
     update_fig_cluster3d,
     display_cluster_color,
-    create_QandA_csv
+    create_QandA, 
+    cluster_entity_description
 )
 
 
@@ -185,7 +187,6 @@ with tab1:
         expander_map = right_t1.expander("Column mapping")
         expander_map.write(st.session_state.col_mapping)
 
-
 with tab2:
 
     left_t2, right_t2 = st.columns([0.3, 0.7])
@@ -242,9 +243,18 @@ with tab2:
         right_t2.markdown("---")
 
         right_t2.write("## Question and Answer pairs")
-        QandA_df = create_QandA_csv()
+        QandA = create_QandA()
+      
+        for i in np.arange(len(QandA['User'])):
+            right_t2.markdown(f"### **Question {i+1}:** {QandA['User'][i]}")
+            right_t2.markdown(f"**Answer:** {QandA['Assistant'][i]}")
+            right_t2.write("\n")
+            #right_t2.write(QandA['User'][i])
+            #right_t2.write(QandA['Assistant'][i])
         
-        st.write(QandA_df)
+        QandA_df = pd.DataFrame(QandA)
+
+        QandA_df.to_csv('data/describe/QandA_data.csv', index=False)
 
     else:
         pass
@@ -304,8 +314,6 @@ with tab3:
         chat.display_messages()
         chat.save_state()
         
-            
-
 with tab4:
     # Create left and right containers
     left_t4, right_t4 = st.columns([0.3, 0.7])
@@ -479,12 +487,11 @@ with tab4:
 
         for i in list_color_cluster:
 
-            display_cluster_color(list_cluster_name [i], list_color_cluster[i])
+            display_cluster_color(list_cluster_name[i], list_color_cluster[i])
             st.write(list_description_cluster[i])
 
 
-            #Print the color of the cluster + the name 
-            # print the description of the cluster by chat gpt
+           
 
 with tab5:
     left_t5, right_t5 = st.columns([0.3, 0.7])
@@ -500,16 +507,28 @@ with tab5:
     else:
 
         # drop down with entity column, default to first column
+        
         entity = left_t5.selectbox(
             label="Select entity",
             options=(st.session_state.df_filtered.index.to_list()),
-            key="selected_entity",
+            key="selected_entity_tab5",
             index=0,
-            on_change=add_to_fig,
+            on_change=cluster_entity_description,
         )
 
-        right_t5.markdown("# Entity description")
-        right_t5.markdown("## In progress")
+        with right_t5:
+            if st.session_state.selected_entity_tab5 == None:
+                indice = 0
+            else:
+                indice = st.session_state.df_filtered.index.tolist().index(
+                    st.session_state.selected_entity_tab5
+                )
+
+            st.write("# Entity description")
+            clust = cluster_entity_description()
+            
+            st.write(clust)
+
 
 
 

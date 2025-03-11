@@ -1,5 +1,5 @@
-from visualisation_utilities import Visualisation, hex_to_rgb, rgb_to_color
-from clustering import Cluster, ClusterVisualisation, ClusterVisualisation3D
+from visualisation_utilities import Visualisation, hex_to_rgb, rgb_to_color, ClusterVisualisation, ClusterVisualisation3D
+from clustering import Cluster
 from sklearn.decomposition import FactorAnalysis
 from sklearn.preprocessing import StandardScaler
 from google.generativeai import GenerationConfig
@@ -9,6 +9,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import json
+import ast
 
 
 DEFAULT_CUM_EXP = 3
@@ -390,12 +391,15 @@ def display_cluster_color(cluster_name, color, size=40):
     """
     st.markdown(square_html, unsafe_allow_html=True)
 
-def create_QandA_csv():
+def create_QandA():
     FA_component_dict = st.session_state.FA_component_dict
     text = []
     for _ , details in FA_component_dict.items():
         text.append(details['label'])
-    return get_QandA(text)
+    QandA = get_QandA(text)
+    QandA = QandA.replace("data = ", "").replace("python", "").replace("```", "").strip()
+    QandA = ast.literal_eval(QandA)
+    return QandA
 
 
 def get_QandA(text):
@@ -411,7 +415,7 @@ def get_QandA(text):
                     "The question should be about each componant, and the answer the explanation "
                     "The question and answer are deduce from the factor analysis"
                     "Make a dataframe with two columns: one column is 'User' for the question, one column is 'Assistant. for the answers"
-                    "The output is only the dataframe"
+                    "Provide just the data dictionary from the code snippet, excluding imports and the DataFrame creation, without the rest of the Python script."
                     ),
             },
             {"role": "model", "parts": "Sure!"},
@@ -430,3 +434,24 @@ def get_QandA(text):
     )
 
     return response.candidates[0].content.parts[0].text
+
+def cluster_entity_description():
+    if st.session_state.selected_entity_tab5 == None:
+        ind = 0
+    else:
+        ind = st.session_state.df_filtered.index.tolist().index(
+            st.session_state.selected_entity_tab5
+            )
+
+
+    df = st.session_state.FA_df.iloc[ind, :].to_frame().T
+    cluster_num = int(df['Cluster'].values[0])
+    list_cluster_name = st.session_state.list_cluster_name[cluster_num]
+    #list_color_cluster = st.session_state.ind_col_map[cluster_num]
+    list_description_cluster = st.session_state.list_description_cluster[cluster_num]
+
+    text = 'The entity is in the cluster ' + str(list_cluster_name) + '. '
+    text += 'The description is ' + str(list_description_cluster)
+    
+    
+    return text

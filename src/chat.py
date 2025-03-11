@@ -22,16 +22,16 @@ class Chat:
             )
 
         st.session_state.chat_state = state
-        self.state = st.session_state.chat_state
-
+        
         if "messages_to_display" not in st.session_state:
             st.session_state.messages_to_display = []
             self.messages_to_display = st.session_state.messages_to_display
-        else:
-            self.messages_to_display = st.session_state.messages_to_display
         
-
-        super().__init__()
+        else: 
+            pass
+        
+        self.messages_to_display = st.session_state.messages_to_display
+        self.state = st.session_state.chat_state
 
 
     def instruction_messages(self):
@@ -148,19 +148,6 @@ class Chat:
                     content = message["content"]
                     self.display_content(content)
     
-    def get_input(self):
-        """
-        Get input from streamlit."""
-
-        if x := st.chat_input(
-            placeholder=f"What else would you like to know about the data?"
-        ):
-            if len(x) > 500:
-                st.error(
-                    f"Your message is too long ({len(x)} characters). Please keep it under 500 characters."
-                )
-
-            self.handle_input(x)
 
     def save_state(self):
         """
@@ -193,6 +180,7 @@ class EntityChat(Chat):
                 )
 
             self.handle_input(x)
+
 
     def instruction_messages(self):
         """
