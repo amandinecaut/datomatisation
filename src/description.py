@@ -407,11 +407,12 @@ class CreateDescription(Description):
         model = genai.GenerativeModel(
             model_name="gemini-1.5-flash",
             system_instruction=msgs["system_instruction"],
-            generation_config=GenerationConfig(max_output_tokens=5),
+            generation_config=GenerationConfig(max_output_tokens=1000),
             )
         chat = model.start_chat(history=msgs["history"])
         response = chat.send_message(
             content=msgs["content"],
             )
         return response.candidates[0].content.parts[0].text
+
 

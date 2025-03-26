@@ -24,7 +24,7 @@ from app_utilities import (
     update_fig_cluster3d,
     display_cluster_color,
     create_QandA, 
-    cluster_entity_description
+    entity_description_cluster
 )
 
 
@@ -241,16 +241,22 @@ with tab2:
         #expander_exp.write(st.session_state.exp_ratio)
 
         right_t2.markdown("---")
-
         right_t2.write("## Question and Answer pairs")
-        QandA = create_QandA()
+
+        activate = ["Yes", "No"]
+        introduction_choice = left_t2.radio("Do you want an introduction?", activate, key="intro_choice")
+
+        if introduction_choice == "Yes":
+            text = right_t2.text_area("Enter your the introduction here:")
+            QandA = create_QandA(text)
+
+        else: 
+            QandA = create_QandA(text=None)
       
         for i in np.arange(len(QandA['User'])):
             right_t2.markdown(f"### **Question {i+1}:** {QandA['User'][i]}")
             right_t2.markdown(f"**Answer:** {QandA['Assistant'][i]}")
             right_t2.write("\n")
-            #right_t2.write(QandA['User'][i])
-            #right_t2.write(QandA['Assistant'][i])
         
         QandA_df = pd.DataFrame(QandA)
 
@@ -308,6 +314,7 @@ with tab3:
             )
             description =  CreateDescription()
             summary = description.stream_gpt(indice)
+            st.session_state.entity_description = summary
             chat.add_message(summary)
             chat.state = "default"
         chat.get_input()
@@ -513,7 +520,7 @@ with tab5:
             options=(st.session_state.df_filtered.index.to_list()),
             key="selected_entity_tab5",
             index=0,
-            on_change=cluster_entity_description,
+            on_change=entity_description_cluster,
         )
 
         with right_t5:
@@ -525,7 +532,7 @@ with tab5:
                 )
 
             st.write("# Entity description")
-            clust = cluster_entity_description()
+            clust = entity_description_cluster()
             
             st.write(clust)
 

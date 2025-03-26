@@ -391,37 +391,63 @@ def display_cluster_color(cluster_name, color, size=40):
     """
     st.markdown(square_html, unsafe_allow_html=True)
 
-def create_QandA():
-    FA_component_dict = st.session_state.FA_component_dict
-    text = []
-    for _ , details in FA_component_dict.items():
-        text.append(details['label'])
-    QandA = get_QandA(text)
+def create_QandA(text):
+    if text == None:
+        #text = []
+        FA_component_dict = st.session_state.FA_component_dict
+
+        #for _ , details in FA_component_dict.items():
+        #    text.append(details['label'])
+        text = [details['label'] for _, details in FA_component_dict.items()]
+
+        msgs = {
+            "system_instruction": "You are a data analyst and scientist",
+            "history": [
+                {
+                    "role": "user",
+                    "parts": (
+                        "Deduce question and answer pairs"
+                        "You have a list of each componant that are deduce from the factor analysis"
+                        "The question should be about each componant, and the answer the explanation "
+                        "The question and answer are deduce from the factor analysis"
+                        "Make a dataframe with two columns: one column is 'User' for the question, one column is 'Assistant. for the answers"
+                        "Provide just the data dictionary from the code snippet, excluding imports and the DataFrame creation, without the rest of the Python script."
+                        ),
+                }
+                ],
+                "content": {"role": "user", "parts": text},
+                }
+        
+    else:
+        text_intro = text
+        FA_component_dict = st.session_state.FA_component_dict
+        text = [details['label'] for _, details in FA_component_dict.items()]
+        full_text = text_intro + "\n" + "\n".join(text)
+        msgs = {
+            "system_instruction": "You are a data analyst and scientist",
+            "history": [
+                {
+                    "role": "user",
+                    "parts": (
+                        "Deduce question and answer pairs"
+                        "You have an introduction of an article about a subject and you have a list of each componant that are deduce from the factor analysis"
+                        "The question should be about each componant, and the answer the explanation "
+                        "The question and answer are deduce from the factor analysis"
+                        "Make a dataframe with two columns: one column is 'User' for the question, one column is 'Assistant. for the answers"
+                        "Provide just the data dictionary from the code snippet, excluding imports and the DataFrame creation, without the rest of the Python script."
+                        ),
+                }
+                ],
+                "content": {"role": "user", "parts": full_text},
+                }
+    QandA = get_QandA(text,msgs)
     QandA = QandA.replace("data = ", "").replace("python", "").replace("```", "").strip()
     QandA = ast.literal_eval(QandA)
     return QandA
 
 
-def get_QandA(text):
+def get_QandA(text, msgs):
 
-    msgs = {
-        "system_instruction": "You are a data analyst and scientist",
-        "history": [
-            {
-                "role": "user",
-                "parts": (
-                    "Deduce question and answer pairs"
-                    "You have a list of each componant that are deduce from the factor analysis"
-                    "The question should be about each componant, and the answer the explanation "
-                    "The question and answer are deduce from the factor analysis"
-                    "Make a dataframe with two columns: one column is 'User' for the question, one column is 'Assistant. for the answers"
-                    "Provide just the data dictionary from the code snippet, excluding imports and the DataFrame creation, without the rest of the Python script."
-                    ),
-            },
-            {"role": "model", "parts": "Sure!"},
-        ],
-        "content": {"role": "user", "parts": text},
-    }
 
     model = genai.GenerativeModel(
         model_name="gemini-1.5-flash",
@@ -435,7 +461,7 @@ def get_QandA(text):
 
     return response.candidates[0].content.parts[0].text
 
-def cluster_entity_description():
+def entity_description_cluster():
     if st.session_state.selected_entity_tab5 == None:
         ind = 0
     else:
@@ -452,6 +478,32 @@ def cluster_entity_description():
 
     text = 'The entity is in the cluster ' + str(list_cluster_name) + '. '
     text += 'The description is ' + str(list_description_cluster)
+
+
+    msgs = {
+        "system_instruction": "You are a data analyst and scientist",
+        "history": [
+            {
+                "role": "user",
+                "parts": (
+                    "You have all the possible information from an individual entity"
+                    "Provide the description of the entity in the corresponding cluster"
+                    ),
+            },
+            {"role": "model", "parts": "Sure!"},
+        ],
+        "content": {"role": "user", "parts": text},
+    }
+
+    model = genai.GenerativeModel(
+        model_name="gemini-1.5-flash",
+        system_instruction=msgs["system_instruction"],
+        generation_config=GenerationConfig(max_output_tokens=1000),
+    )
+    chat = model.start_chat(history=msgs["history"])
+    response = chat.send_message(
+        content=msgs["content"],
+    )
     
     
-    return text
+    return response.candidates[0].content.parts[0].text
