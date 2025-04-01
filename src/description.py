@@ -315,9 +315,14 @@ class CreateDescription(Description):
                 elif value < -1:
                     text += 'In particular, the entity says that ' + component["bottom"][0] + '. '
             
-
+            
+            #cluster_num = int( self.FA_df['Cluster'].values[0])
+            #list_cluster_name = st.session_state.list_cluster_name[cluster_num]
+            #list_description_cluster = st.session_state.list_description_cluster[cluster_num]
+            #text += 'The entity is in the cluster ' + str(list_cluster_name) + '. '
+            #text += 'The description is ' + str(list_description_cluster)
         return text
-
+### TO DO : a file for the cluster description/file for the individual.
     def synthesize_text(self):
 
         description = self.get_description(self.indice)
@@ -372,7 +377,7 @@ class CreateDescription(Description):
                 "role": "user",
                 "parts": (
                     "You label a cluster."
-                    "The label has to be short and smooth."
+                    "The label has to be short and clear."
                     "Output a label only."
                     ),
                 },
@@ -398,7 +403,7 @@ class CreateDescription(Description):
                 {
                 "role": "user",
                 "parts": (
-                    "You have a description of a cluster. Make it better and more descriptive"
+                    "You have a description of a cluster. Make it better and more descriptive. Give only one option"
                     ),
                 },
                 ],
