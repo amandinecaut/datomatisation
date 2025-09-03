@@ -46,34 +46,46 @@ st.set_page_config(layout="wide")
 default_cum_exp, default_sum_threshold, default_max_components, default_num_clusters = get_defaults()
 
 height = 1500  # height of the container
-DEFAULT_DATA = "./data/data-final-sample.csv"
-DEFAULT_MAP = "./data/map.json"
 
-# track interaction prompt
+
+
+if "u_labels" not in st.session_state:
+    st.session_state.u_labels = None
+if "centroids" not in st.session_state:
+    st.session_state.centroids = None
+if "ind_col_map" not in st.session_state:
+    st.session_state.ind_col_map = None
+if "selected_entity" not in st.session_state:
+    st.session_state.selected_entity = None
+if "FA_component_dict" not in st.session_state:
+    st.session_state.FA_component_dict = {}
+if "list_cluster_name" not in st.session_state:
+    st.session_state.list_cluster_name = None
+if "list_description_cluster" not in st.session_state:
+    st.session_state.list_description_cluster = None
+if "fig_base" not in st.session_state:
+    st.session_state.fig_base = go.Figure()
 if "entity_col" not in st.session_state:
     st.session_state.entity_col = "Index"
-st.session_state.setdefault("u_labels", None)
-st.session_state.setdefault("centroids", None)
-st.session_state.setdefault("ind_col_map", None)
-st.session_state.setdefault("selected_entity", None)
-st.session_state.setdefault("FA_component_dict", None)
 if "FA_df" not in st.session_state:
     st.session_state.FA_df = pd.DataFrame()
-    
+
+for key in ["tab1_done", "tab2_done", "tab3_done", "tab4_done"]:
+    if key not in st.session_state:
+        st.session_state[key] = False
 
 
-
-
-# set_default_data()
-# for key, value in st.session_state.items():
-#     print(key)  # , value)
+for key, value in st.session_state.items():
+    print(key)
 
 # Add and app header
 st.title("Automated Factor Analysis pipeline")
 
-tab1, tab2, tab3, tab4 = st.tabs(["Load data", "Factor Analysis", "Clustering", "View"])
+tabs = st.tabs(["Load data", "Factor Analysis", "Clustering", "View"])
 
-with tab1:
+
+# Load Data
+with tabs[0]:
 
     left_t1, right_t1 = st.columns([0.3, 0.7])
     # Left pane title
@@ -186,118 +198,117 @@ with tab1:
         expander_map = right_t1.expander("Column mapping")
         expander_map.write(st.session_state.col_mapping)
 
-with tab2:
+        st.session_state.tab1_done = True
+        
+    
+# "Factor Analysis"    
+with tabs[1]:
+    if not st.session_state.tab1_done:
+        st.warning("You must complete Tab 1 first!")
+    else:
 
-    left_t2, right_t2 = st.columns([0.3, 0.7])
-    # Left pane title
+        left_t2, right_t2 = st.columns([0.3, 0.7])
+        left_t2 = left_t2.container(height=height, border=0)
+        right_t2 = right_t2.container(height=height, border=3)
+        left_t2.markdown("### Factor Analysis")
 
-    left_t2 = left_t2.container(height=height, border=0)
-    right_t2 = right_t2.container(height=height, border=3)
-
-    left_t2.markdown("### Factor Analysis")
-
-    cum_exp = left_t2.slider(
-        "Select the number of components",
-        min_value=1,
-        max_value=default_max_components,
-        value=app_utilities.DEFAULT_CUM_EXP,
-        step=1,
-        key="cum_exp",
-        on_change=perform_FA,
-    )
-
-    if left_t2.button("Run Factor Analysis"):
-        perform_FA()
-
-    if "df_full" not in st.session_state:
-        right_t2.write("Load data to perform Factor Analysis")
-    elif len(st.session_state.df_filtered) < 10:
-        right_t2.write("Not enough data to perform Factor Analysis")
-    elif "N" not in st.session_state:
-        right_t2.write("Select a number of factor to perform Factor Analysis")
-    elif "N" in st.session_state:
-        right_t2.write("## Automated labeling")
-        display_results(right_t2)
-
-        left_t2.write(
-            f"Number of components: {st.session_state.N} (max {default_max_components})"
+        cum_exp = left_t2.slider(
+            "Select the number of components",
+            min_value=1,
+            max_value=default_max_components,
+            value=app_utilities.DEFAULT_CUM_EXP,
+            step=1,
+            key="cum_exp",
+            on_change=perform_FA,
         )
 
-        right_t2.markdown("---")
+        if left_t2.button("Run Factor Analysis"):
+            perform_FA()
 
-        right_t2.write("## Factor Analysis results")
+        if "df_full" not in st.session_state:
+            right_t2.write("Load data to perform Factor Analysis")
+        elif len(st.session_state.df_filtered) < 10:
+            right_t2.write("Not enough data to perform Factor Analysis")
+        elif "N" not in st.session_state:
+            right_t2.write("Select a number of factor to perform Factor Analysis")
+        elif "N" in st.session_state:
+            right_t2.write("## Automated labeling")
+            display_results(right_t2)
 
-        expander_FA = right_t2.expander("Factor Analysis results")
-        expander_FA.write(st.session_state.FA_df)
+            left_t2.write(
+                f"Number of components: {st.session_state.N} (max {default_max_components})"
+            )
 
-        expander_exp = right_t2.expander("Factors components")
-        expander_exp.write(st.session_state.components)
+            right_t2.markdown("---")
 
-        # print sum over columns of st.session_state.components
-        # print(np.linalg.norm(st.session_state.components, axis=0))
+            right_t2.write("## Factor Analysis results")
 
-        #expander_exp = right_t2.expander("Factors explained variance")
-        #expander_exp.write(st.session_state.exp_ratio)
+            expander_FA = right_t2.expander("Factor Analysis results")
+            expander_FA.write(st.session_state.FA_df)
 
-        right_t2.markdown("---")
-        right_t2.write("## Question and Answer pairs")
+            expander_exp = right_t2.expander("Factors components")
+            expander_exp.write(st.session_state.components)
 
-        activate = ["Yes", "No"]
-        introduction_choice = left_t2.radio("Do you want an introduction?", activate, key="intro_choice")
 
-        if introduction_choice == "Yes":
-            text = right_t2.text_area("Enter your the introduction here:")
-            QandA = create_QandA(text)
+            right_t2.markdown("---")
+            right_t2.write("## Question and Answer pairs")
 
-        else: 
-            QandA = create_QandA(text=None)
+            activate = ["Yes", "No"]
+            introduction_choice = left_t2.radio("Do you want an introduction?", activate, key="intro_choice")
+
+            if introduction_choice == "Yes":
+                text = right_t2.text_area("Enter your the introduction here:")
+                QandA = create_QandA(text)
+
+            else: 
+                QandA = create_QandA(text=None)
       
-        for i in np.arange(len(QandA['User'])):
-            right_t2.markdown(f"### **Question {i+1}:** {QandA['User'][i]}")
-            right_t2.markdown(f"**Answer:** {QandA['Assistant'][i]}")
-            right_t2.write("\n")
+            for i in range(len(QandA['User'])):
+                right_t2.markdown(f"### **Question {i+1}:** {QandA['User'][i]}")
+                right_t2.markdown(f"**Answer:** {QandA['Assistant'][i]}")
+                right_t2.write("\n")
         
-        QandA_df = pd.DataFrame(QandA)
+            QandA_df = pd.DataFrame(QandA)
 
-        QandA_df.to_csv('data/describe/QandA_data.csv', index=False)
+            QandA_df.to_csv('./data/describe/QandA_data.csv', index=False)
 
+            st.session_state.tab2_done = True
+
+            
+        
+# Clustering
+with tabs[2]:
+    if not st.session_state.tab2_done:
+        st.warning("You must complete Tab 2 first!")
     else:
-        pass
+        # Create left and right containers
+        left_t3, right_t3 = st.columns([0.3, 0.7])
+        left_t3 = left_t3.container(height=height, border=0)
+        right_t3 = right_t3.container(height=height, border=3)
 
+        left_t3.markdown("### Clustering")
 
-with tab3:
-    # Create left and right containers
-    left_t3, right_t3 = st.columns([0.3, 0.7])
-    left_t3 = left_t3.container(height=height, border=0)
-    right_t3 = right_t3.container(height=height, border=3)
-
-    left_t3.markdown("### Clustering")
-
-    # Slider for number of clusters
-    num_clusters = left_t3.slider(
-        "Select the number of clusters",
-        min_value=2,
-        max_value=10,
-        value= app_utilities.DEFAULT_NUM_CLUSTERS, 
-        step=1,
-        key="num_clusters",
-        on_change=perform_clustering,  
-    )
-
-    if st.session_state.FA_df is None:
-        right_t3.write("Perform Factor Analysis to view information about a data point")
-
-    else: 
+        # Slider for number of clusters
+        num_clusters = left_t3.slider(
+            "Select the number of clusters",
+            min_value=2,
+            max_value=10,
+            value= app_utilities.DEFAULT_NUM_CLUSTERS, 
+            step=1,
+            key="num_clusters",
+            on_change=perform_clustering,  
+        )
+    
         # Button to trigger clustering
         if left_t3.button("Run Clustering"):
             perform_clustering()
             right_t3.write("Clustering complete")
+            st.session_state.tab3_done = True
             
             
 
         # Factor selection for dimensions
         left_t3.markdown("### Select Factors for Each Dimension")
-
         factors = [v["label"] for k, v in st.session_state.FA_component_dict.items()]
 
         if len(factors) <2: 
@@ -344,6 +355,7 @@ with tab3:
                 right_t3.plotly_chart(
                 st.session_state.fig_cluster, use_container_width=True, theme="streamlit"
                 )
+                
 
             else:
                 # First dimension selection
@@ -390,6 +402,7 @@ with tab3:
                 )
 
 
+
         else: 
             ### HERE FOR 2D PLOT ONLY WHEN THERE IS ONLY 2 FACTORS
 
@@ -429,32 +442,31 @@ with tab3:
                 )
 
         
-    with right_t3:
-        # Cluster description
-        st.markdown("<h3><b>Description of each cluster</b></h3>", unsafe_allow_html=True)
-        list_cluster_name = st.session_state.list_cluster_name
-        list_color_cluster = st.session_state.ind_col_map
-        list_description_cluster = st.session_state.list_description_cluster
+        with right_t3:
+            # Cluster description
+            st.markdown("<h3><b>Description of each cluster</b></h3>", unsafe_allow_html=True)
+            list_cluster_name = st.session_state.list_cluster_name
+            list_color_cluster = st.session_state.ind_col_map
+            list_description_cluster = st.session_state.list_description_cluster
+            if list_color_cluster is None:
+                pass
+            else:
+                for i in list_color_cluster:
+                    display_cluster_color(list_cluster_name[i], list_color_cluster[i])
+                    st.write(list_description_cluster[i])
+                
+           
 
-        for i in list_color_cluster:
 
-            display_cluster_color(list_cluster_name[i], list_color_cluster[i])
-            st.write(list_description_cluster[i])
-    st.session_state.tab3_ran = True
-
-with tab4:
-
-
-    left_t4, right_t4 = st.columns([0.3, 0.7])
-
-    left_t4 = left_t4.container(height=height, border=0)
-    right_t4 = right_t4.container(height=height, border=3)
-
-    left_t4.markdown("### Select entity")
-
-    if not st.session_state.tab3_ran:
-        st.warning("No action was taken in Tab 3.")
+# View
+with tabs[3]:
+    if not st.session_state.tab3_done:
+        st.warning("You must complete Tab 3 first!")
     else:
+        left_t4, right_t4 = st.columns([0.3, 0.7])
+        left_t4 = left_t4.container(height=height, border=0)
+        right_t4 = right_t4.container(height=height, border=3)
+        left_t4.markdown("### Select entity")
 
         # drop down with entity column, default to first column
         entity = left_t4.selectbox(
@@ -471,32 +483,33 @@ with tab4:
         
         
 
-    with right_t4:
-        if st.session_state.selected_entity == None:
-            indice = 0
-        else:
-            indice = st.session_state.df_filtered.index.tolist().index(
-                st.session_state.selected_entity
-            )
+        with right_t4:
+            if st.session_state.selected_entity == None:
+                indice = 0
+            else:
+                indice = st.session_state.df_filtered.index.tolist().index(
+                    st.session_state.selected_entity
+                )
         
-        st.write("Wordalisation")
-        chat = EntityChat()
-        if chat.state == "empty":
-            chat.add_message(
-            "Please can you summarise the data for me?",
-            role="user",
-            user_only=False,
-            visible=False,
-            )
-            description =  CreateDescription()
-            summary = description.stream_gpt(indice)
-            st.session_state.entity_description = summary
-            chat.add_message(summary)
-            chat.state = "default"
-        chat.get_input()
-        chat.display_messages()
-        chat.save_state()
-                  
+            st.write("Wordalisation")
+            chat = EntityChat()
+            if chat.state == "empty":
+                chat.add_message(
+                "Please can you summarise the data for me?",
+                role="user",
+                user_only=False,
+                visible=False,
+                )
+                description =  CreateDescription()
+                summary = description.stream_gpt(indice)
+                st.session_state.entity_description = summary
+                chat.add_message(summary)
+                chat.state = "default"
+            chat.get_input()
+            chat.display_messages()
+            chat.save_state()
+            
+        st.session_state.tab4_done = True 
 
 
         #indice = st.session_state.df_filtered.index.tolist().index(st.session_state.selected_entity_tab5)

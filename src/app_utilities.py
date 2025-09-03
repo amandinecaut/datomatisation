@@ -23,6 +23,8 @@ def set_default_data():
     load_data("./data/data-final-sample.csv")
     load_map("./data/map.json")
 
+    
+
 def clear_session_state(skip=[]):
     for key in st.session_state.keys():
         if key not in skip:
