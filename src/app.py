@@ -49,34 +49,29 @@ height = 1500  # height of the container
 
 
 
-if "u_labels" not in st.session_state:
-    st.session_state.u_labels = None
-if "centroids" not in st.session_state:
-    st.session_state.centroids = None
-if "ind_col_map" not in st.session_state:
-    st.session_state.ind_col_map = None
-if "selected_entity" not in st.session_state:
-    st.session_state.selected_entity = None
-if "FA_component_dict" not in st.session_state:
-    st.session_state.FA_component_dict = {}
-if "list_cluster_name" not in st.session_state:
-    st.session_state.list_cluster_name = None
-if "list_description_cluster" not in st.session_state:
-    st.session_state.list_description_cluster = None
-if "fig_base" not in st.session_state:
-    st.session_state.fig_base = go.Figure()
-if "entity_col" not in st.session_state:
-    st.session_state.entity_col = "Index"
-if "FA_df" not in st.session_state:
-    st.session_state.FA_df = pd.DataFrame()
+default_values = {
+    "u_labels": np.array([]),
+    "centroids": None,
+    "ind_col_map": None,
+    "selected_entity": None,
+    "FA_component_dict": {},
+    "list_cluster_name": None,
+    "list_description_cluster": None,
+    "fig_base": go.Figure(),
+    "entity_col": "Index",
+    "FA_df": pd.DataFrame(),
+    "tab1_done": False,
+    "tab2_done": False,
+    "tab3_done": False,
+    "tab4_done": False
+}
 
-for key in ["tab1_done", "tab2_done", "tab3_done", "tab4_done"]:
+for key, value in default_values.items():
     if key not in st.session_state:
-        st.session_state[key] = False
-
+        st.session_state[key] = value
 
 for key, value in st.session_state.items():
-    print(key)
+    print(f"{key}: {value}")
 
 # Add and app header
 st.title("Automated Factor Analysis pipeline")
@@ -203,7 +198,7 @@ with tabs[0]:
     
 # "Factor Analysis"    
 with tabs[1]:
-    if not st.session_state.tab1_done:
+    if not st.session_state.get("tab1_done", False):
         st.warning("You must complete Tab 1 first!")
     else:
 
@@ -253,33 +248,48 @@ with tabs[1]:
             right_t2.markdown("---")
             right_t2.write("## Question and Answer pairs")
 
+
+
+
             activate = ["Yes", "No"]
             introduction_choice = left_t2.radio("Do you want an introduction?", activate, key="intro_choice")
 
-            if introduction_choice == "Yes":
-                text = right_t2.text_area("Enter your the introduction here:")
+            # Show text area only if "Yes" is selected
+            text = right_t2.text_area("Enter your introduction here:") if introduction_choice == "Yes" else None
+
+            # Disable button if "Yes" is selected but text is empty
+            generate_disabled = introduction_choice == "Yes" and (not text or not text.strip())
+
+            if right_t2.button("Generate Q&A", disabled=generate_disabled):
                 QandA = create_QandA(text)
 
-            else: 
-                QandA = create_QandA(text=None)
-      
-            for i in range(len(QandA['User'])):
-                right_t2.markdown(f"### **Question {i+1}:** {QandA['User'][i]}")
-                right_t2.markdown(f"**Answer:** {QandA['Assistant'][i]}")
-                right_t2.write("\n")
-        
-            QandA_df = pd.DataFrame(QandA)
+                if QandA and "User" in QandA and "Assistant" in QandA:
+                # Display Q&A
+                    for i, (q, a) in enumerate(zip(QandA['User'], QandA['Assistant']), start=1):
+                        right_t2.markdown(f"### **Question {i}:** {q}")
+                        right_t2.markdown(f"**Answer:** {a}")
+                        right_t2.write("\n")
 
-            QandA_df.to_csv('./data/describe/QandA_data.csv', index=False)
+                # Save Q&A as CSV
+                QandA_df = pd.DataFrame(QandA)
+                csv_path = './data/describe/QandA_data.csv'
+                QandA_df.to_csv(csv_path, index=False)
 
-            st.session_state.tab2_done = True
+                st.success("Q&A generated and saved!")
+                st.session_state.tab2_done = True
+            else:
+                st.error("Failed to generate Q&A. Please check your input.")
+
+     
 
             
         
 # Clustering
 with tabs[2]:
-    if not st.session_state.tab2_done:
+    if not st.session_state.get("tab2_done", False):
         st.warning("You must complete Tab 2 first!")
+        st.stop()
+        
     else:
         # Create left and right containers
         left_t3, right_t3 = st.columns([0.3, 0.7])
@@ -304,6 +314,8 @@ with tabs[2]:
             perform_clustering()
             right_t3.write("Clustering complete")
             st.session_state.tab3_done = True
+        else:
+            st.stop()
             
             
 
@@ -460,7 +472,7 @@ with tabs[2]:
 
 # View
 with tabs[3]:
-    if not st.session_state.tab3_done:
+    if not st.session_state.get("tab3_done", False):
         st.warning("You must complete Tab 3 first!")
     else:
         left_t4, right_t4 = st.columns([0.3, 0.7])

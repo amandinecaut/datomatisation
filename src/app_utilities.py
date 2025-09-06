@@ -10,6 +10,7 @@ import pandas as pd
 import numpy as np
 import json
 import ast
+import re
 
 
 DEFAULT_CUM_EXP = 3
@@ -393,13 +394,10 @@ def display_cluster_color(cluster_name, color, size=40):
     """
     st.markdown(square_html, unsafe_allow_html=True)
 
-def create_QandA(text):
+def create_QandA1(text):
     if text == None:
-        #text = []
         FA_component_dict = st.session_state.FA_component_dict
-
-        #for _ , details in FA_component_dict.items():
-        #    text.append(details['label'])
+        
         text = [details['label'] for _, details in FA_component_dict.items()]
 
         msgs = {
@@ -424,7 +422,7 @@ def create_QandA(text):
         text_intro = text
         FA_component_dict = st.session_state.FA_component_dict
         text = [details['label'] for _, details in FA_component_dict.items()]
-        full_text = text_intro + "\n" + "\n".join(text)
+        text = text_intro + "\n" + "\n".join(text)
         msgs = {
             "system_instruction": "You are a data analyst and scientist",
             "history": [
@@ -440,12 +438,51 @@ def create_QandA(text):
                         ),
                 }
                 ],
-                "content": {"role": "user", "parts": full_text},
+                "content": {"role": "user", "parts": text},
                 }
     QandA = get_QandA(text,msgs)
     QandA = QandA.replace("data = ", "").replace("python", "").replace("```", "").strip()
     QandA = ast.literal_eval(QandA)
     return QandA
+
+def create_QandA(text: str | None):
+    FA_component_dict = st.session_state.FA_component_dict
+    component_labels = [details['label'] for _, details in FA_component_dict.items()]
+
+    # Combine introduction text if provided
+    if text:
+        text = f"{text}\n" + "\n".join(component_labels)
+        intro_instruction = "You have an introduction of an article about a subject and"
+    else:
+        text = [details['label'] for _, details in FA_component_dict.items()]
+       
+        intro_instruction = ""
+
+    # Build message
+    msgs = {
+        "system_instruction": "You are a data analyst and scientist",
+        "history": [
+            {
+                "role": "user",
+                "parts": (
+                    f"Deduce question and answer pairs. "
+                    f"{intro_instruction} you have a list of each component deduced from factor analysis. "
+                    "The questions should be about each component, and the answers should explain them. "
+                    "The question and answer are deduce from the factor analysis"
+                    "Make a dataframe with two columns: one column is 'User' for the question, one column is 'Assistant. for the answers"
+                    "Provide just the data dictionary from the code snippet, excluding imports and the DataFrame creation, without the rest of the Python script."
+                ),
+            }
+        ],
+        "content": {"role": "user", "parts": text},
+    }
+
+    # Get and clean Q&A
+    QandA = get_QandA(text, msgs)
+    QandA = QandA.replace("data = ", "").replace("python", "").replace("```", "").strip()
+    return ast.literal_eval(QandA)
+
+
 
 
 def get_QandA(text, msgs):
