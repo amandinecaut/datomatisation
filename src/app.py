@@ -30,16 +30,16 @@ from app_utilities import (
 from chat import EntityChat
 from description import CreateDescription
 
-# load secrets from .streamlit/secrets.toml
-GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY", "")
 
-genai.configure(api_key=GEMINI_API_KEY)
+
+
+
+
+
+
+
 
 st.set_page_config(layout="wide")
-
-
-
-
 
 
 
@@ -70,8 +70,6 @@ for key, value in default_values.items():
     if key not in st.session_state:
         st.session_state[key] = value
 
-for key, value in st.session_state.items():
-    print(f"{key}: {value}")
 
 # Add and app header
 st.title("Automated Factor Analysis pipeline")
@@ -199,7 +197,7 @@ with tabs[0]:
 # "Factor Analysis"    
 with tabs[1]:
     if not st.session_state.get("tab1_done", False):
-        st.warning("You must complete Tab 1 first!")
+        st.warning("You must load your data first!")
     else:
 
         left_t2, right_t2 = st.columns([0.3, 0.7])
@@ -287,7 +285,7 @@ with tabs[1]:
 # Clustering
 with tabs[2]:
     if not st.session_state.get("tab2_done", False):
-        st.warning("You must complete Tab 2 first!")
+        st.warning("You must complete the factor analysis first!")
         st.stop()
         
     else:
@@ -314,8 +312,7 @@ with tabs[2]:
             perform_clustering()
             right_t3.write("Clustering complete")
             st.session_state.tab3_done = True
-        else:
-            st.stop()
+   
             
             
 
@@ -473,7 +470,7 @@ with tabs[2]:
 # View
 with tabs[3]:
     if not st.session_state.get("tab3_done", False):
-        st.warning("You must complete Tab 3 first!")
+        st.warning("You must complete the clustering first!")
     else:
         left_t4, right_t4 = st.columns([0.3, 0.7])
         left_t4 = left_t4.container(height=height, border=0)

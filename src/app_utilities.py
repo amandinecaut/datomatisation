@@ -269,17 +269,9 @@ def get_component_labels(text):
         "content": {"role": "user", "parts": text},
     }
 
-    model = genai.GenerativeModel(
-        model_name="gemini-1.5-flash",
-        system_instruction=msgs["system_instruction"],
-        generation_config=GenerationConfig(max_output_tokens=50),
-    )
-    chat = model.start_chat(history=msgs["history"])
-    response = chat.send_message(
-        content=msgs["content"],
-    )
+    text_generate =  get_generate(msgs)
 
-    return response.candidates[0].content.parts[0].text
+    return text_generate
 
 def display_results(component):
     results_dict = st.session_state.FA_component_dict
@@ -329,20 +321,14 @@ def add_to_fig():
 
     df = st.session_state.df_z_scores.iloc[ind, :].to_frame().T
      
-
     color = st.get_option("theme.primaryColor")
     if color is None:
         color = "#FF4B4B"
 
-
-
     for col in df.columns.tolist():
-
         st.session_state.fig_base.update_traces(
             selector={"name": f"{col} selected"}, x=df[col]
         )
-
-
 
     if "fig" in st.session_state:
         del st.session_state["fig"]
@@ -394,56 +380,6 @@ def display_cluster_color(cluster_name, color, size=40):
     """
     st.markdown(square_html, unsafe_allow_html=True)
 
-def create_QandA1(text):
-    if text == None:
-        FA_component_dict = st.session_state.FA_component_dict
-        
-        text = [details['label'] for _, details in FA_component_dict.items()]
-
-        msgs = {
-            "system_instruction": "You are a data analyst and scientist",
-            "history": [
-                {
-                    "role": "user",
-                    "parts": (
-                        "Deduce question and answer pairs"
-                        "You have a list of each componant that are deduce from the factor analysis"
-                        "The question should be about each componant, and the answer the explanation "
-                        "The question and answer are deduce from the factor analysis"
-                        "Make a dataframe with two columns: one column is 'User' for the question, one column is 'Assistant. for the answers"
-                        "Provide just the data dictionary from the code snippet, excluding imports and the DataFrame creation, without the rest of the Python script."
-                        ),
-                }
-                ],
-                "content": {"role": "user", "parts": text},
-                }
-        
-    else:
-        text_intro = text
-        FA_component_dict = st.session_state.FA_component_dict
-        text = [details['label'] for _, details in FA_component_dict.items()]
-        text = text_intro + "\n" + "\n".join(text)
-        msgs = {
-            "system_instruction": "You are a data analyst and scientist",
-            "history": [
-                {
-                    "role": "user",
-                    "parts": (
-                        "Deduce question and answer pairs"
-                        "You have an introduction of an article about a subject and you have a list of each componant that are deduce from the factor analysis"
-                        "The question should be about each componant, and the answer the explanation "
-                        "The question and answer are deduce from the factor analysis"
-                        "Make a dataframe with two columns: one column is 'User' for the question, one column is 'Assistant. for the answers"
-                        "Provide just the data dictionary from the code snippet, excluding imports and the DataFrame creation, without the rest of the Python script."
-                        ),
-                }
-                ],
-                "content": {"role": "user", "parts": text},
-                }
-    QandA = get_QandA(text,msgs)
-    QandA = QandA.replace("data = ", "").replace("python", "").replace("```", "").strip()
-    QandA = ast.literal_eval(QandA)
-    return QandA
 
 def create_QandA(text: str | None):
     FA_component_dict = st.session_state.FA_component_dict
@@ -478,15 +414,24 @@ def create_QandA(text: str | None):
     }
 
     # Get and clean Q&A
-    QandA = get_QandA(text, msgs)
+    QandA = get_generate(msgs)
     QandA = QandA.replace("data = ", "").replace("python", "").replace("```", "").strip()
+    print(QandA)
+    if "=" in QandA:
+        QandA = QandA.split("=", 1)[1].strip()
+    
+    match = re.search(r"\{.*\}", QandA, re.DOTALL)
+    if match:
+        QandA = match.group(0)
+
+    
+
     return ast.literal_eval(QandA)
 
 
 
 
-def get_QandA(text, msgs):
-
+def get_generate1(msgs):
 
     model = genai.GenerativeModel(
         model_name="gemini-1.5-flash",
@@ -499,3 +444,129 @@ def get_QandA(text, msgs):
     )
 
     return response.candidates[0].content.parts[0].text
+
+
+
+import toml
+_config = toml.load(".streamlit/secrets.toml")
+
+
+def get_model2():
+    """
+    Returns a tuple (model_object, service_name, config) depending on settings.
+    Automatically falls back to GPT if Gemini is preferred but fails.
+    """
+    primary_service = "gemini" if _config["settings"]["USE_GEMINI"] else "gpt"
+    fallback_service = "gpt" if primary_service == "gemini" else None
+
+    for service_name in [primary_service, fallback_service]:
+        print(service_name)
+        if service_name is None:
+            continue
+        config = _config["services"][service_name]
+        try:
+            if service_name == "gemini":
+                genai.configure(api_key=config["GEMINI_API_KEY"])
+                model = genai.GenerativeModel(
+                    model_name=config["GEMINI_CHAT_MODEL"],
+                    generation_config=GenerationConfig(max_output_tokens=1000)
+                )
+            elif service_name == "gpt":
+                model = GPTModel(
+                    api_key=config["GPT_KEY"],
+                    model_name=config.get("GPT_ENGINE", ""),
+                    base_url=config.get("GPT_BASE", ""),
+                    version=config.get("GPT_VERSION", "")
+                )
+            return model, service_name, config
+        except Exception as e:
+            #if "ResourceExhausted" in str(e) or "429" in str(e):
+            print(f"{service_name.capitalize()} quota exceeded. Trying fallback...")
+            continue
+
+def get_model():
+    """
+    Try Gemini first; if it fails, fall back to GPT.
+    Returns (model, service_name, config).
+    """
+    gemini_config = _config["services"].get("gemini", {})
+    gpt_config = _config["services"].get("gpt", {})
+
+    # Try Gemini
+    try:
+        genai.configure(api_key=gemini_config["GEMINI_API_KEY"])
+        model = genai.GenerativeModel(
+            model_name=gemini_config["GEMINI_CHAT_MODEL"],
+            generation_config=GenerationConfig(max_output_tokens=1000),
+        )
+        return model, "gemini", gemini_config
+    except Exception as e:
+        print(f"⚠️ Gemini failed: {e}. Falling back to GPT...")
+
+    # Fall back to GPT
+    try:
+        model = GPTModel(
+            api_key=gpt_config["GPT_KEY"],
+            model_name=gpt_config.get("GPT_ENGINE", "gpt-4"),
+            base_url=gpt_config.get("GPT_BASE", None),
+            version=gpt_config.get("GPT_VERSION", None),
+        )
+        return model, "gpt", gpt_config
+
+
+def get_generate2(msgs: dict) -> str:
+    """
+    Sends a message using Gemini first, otherwise GPT.
+    msgs format:
+    {
+        "system_instruction": str,
+        "history": list[dict],
+        "content": str
+    }
+    """
+    model, service_name, _ = get_model()
+
+    if service_name == "gemini":
+        chat = model.start_chat(history=msgs.get("history", []))
+        response = chat.send_message(
+            msgs["content"],
+            system_instruction=msgs.get("system_instruction", None),
+        )
+
+        if hasattr(response, "candidates") and response.candidates:
+            parts = response.candidates[0].content.parts
+            if parts and hasattr(parts[0], "text"):
+                return parts[0].text
+        raise RuntimeError("Gemini returned no valid text response.")
+
+    elif service_name == "gpt":
+        chat = GPTChat(model=model, history=msgs.get("history", []))
+        response = chat.send_message(msgs["content"])
+        return getattr(response, "text", str(response))
+
+
+def get_generate(msgs):
+    """
+    Sends a message using the current model and returns the text.
+    
+    msgs: {
+        "system_instruction": str,
+        "history": list,
+        "content": str
+    }
+    """
+    model, service_name, _ = get_model()
+
+    if service_name == "gemini":
+        chat = model.start_chat(history=msgs["history"])
+        response = chat.send_message(
+        content=msgs["content"],
+        )
+
+        return response.candidates[0].content.parts[0].text
+
+
+    elif service_name == "gpt":
+        chat = GPTChat(model=model, history=msgs.get("history", []))
+        response = chat.send_message(msgs["content"])
+        return response.text

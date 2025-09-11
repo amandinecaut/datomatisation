@@ -209,7 +209,7 @@ class EntityChat(Chat):
         if query == "":
             query = self.visible_messages[-1]["content"]
 
-        ret_val = "Here is a description of the player in terms of data: \n\n"
+        ret_val = "Here is a description of the entity in terms of data: \n\n"
         describe =  CreateDescription()
         summary = describe.stream_gpt(self.indice)
 

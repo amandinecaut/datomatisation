@@ -66,7 +66,7 @@ class Description(ABC):
                     "You are a data analysis bot. "
                     "You provide succinct and to the point explanations about data using data. "
                     "You use the information given to you from the data and answers "
-                    "to earlier user/assistant pairs to give summaries of players."
+                    "Use earlier user/assistant pairs to give summaries of the data"
                 ),
             },
         ]
@@ -144,11 +144,6 @@ class Description(ABC):
         #) as e:  # FIXME: When merging with new_training, add the other exception
         #    print(e)
         
-        messages += self.get_prompt_messages()
-
-        messages = [
-            message for message in messages if isinstance(message["content"], str)
-        ]
 
 
         messages += [
@@ -196,20 +191,11 @@ class Description(ABC):
 
     
         msgs = self.convert_messages_format(self.messages)
+       
+        answer = self.get_generate(msgs, 150)
+       
 
-        model = genai.GenerativeModel(
-        model_name="gemini-1.5-flash",
-            system_instruction=msgs["system_instruction"],
-            generation_config=GenerationConfig(max_output_tokens=150),
-            )
-        chat = model.start_chat(history=msgs["history"])
-        response = chat.send_message(
-            content=msgs["content"],
-        )
-
-        answer = response.text
-
-        return answer
+        return answer.text
 
     
 
@@ -322,6 +308,7 @@ class CreateDescription(Description):
             #text += 'The entity is in the cluster ' + str(list_cluster_name) + '. '
             #text += 'The description is ' + str(list_description_cluster)
         return text
+        
 ### TO DO : a file for the cluster description/file for the individual.
     def synthesize_text(self):
 
@@ -384,16 +371,8 @@ class CreateDescription(Description):
                 ],
             "content": {"role": "user", "parts": text},
             }
-        model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash",
-            system_instruction=msgs["system_instruction"],
-            generation_config=GenerationConfig(max_output_tokens=5),
-            )
-        chat = model.start_chat(history=msgs["history"])
-        response = chat.send_message(
-            content=msgs["content"],
-            )
-        return response.candidates[0].content.parts[0].text
+        text_generate = self.get_generate(msgs, max_output_token = 5)
+        return text_generate.candidates[0].content.parts[0].text
     
     def get_cluster_description(self, text):
 
@@ -409,15 +388,21 @@ class CreateDescription(Description):
                 ],
             "content": {"role": "user", "parts": text},
             }
+        text_generate = self.get_generate(msgs, max_output_token = 1000)
+        
+        return text_generate.candidates[0].content.parts[0].text
+
+    def get_generate(self, msgs, max_output_token):
         model = genai.GenerativeModel(
             model_name="gemini-1.5-flash",
             system_instruction=msgs["system_instruction"],
-            generation_config=GenerationConfig(max_output_tokens=1000),
+            generation_config=GenerationConfig(max_output_tokens=max_output_token),
             )
         chat = model.start_chat(history=msgs["history"])
         response = chat.send_message(
             content=msgs["content"],
             )
-        return response.candidates[0].content.parts[0].text
+        return response
+        
 
 
