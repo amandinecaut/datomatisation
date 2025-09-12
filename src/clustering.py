@@ -55,8 +55,12 @@ class Cluster:
     def name_the_cluster(self, centroids):
         create_description = CreateDescription()
         liste_name_dim = []
+        print(centroids)
+        print(st.session_state.FA_component_dict.items())
+        print()
         for _ , details in st.session_state.FA_component_dict.items():
             liste_name_dim.append(details['label'])
+        print(liste_name_dim)
         
         list_name_cluster = []
 
@@ -66,6 +70,11 @@ class Cluster:
                 value_dim = center[dim]
                 text_dim = create_description.describe_level_cluster(value_dim)
                 text_low, text_high = create_description.split_qualities(liste_name_dim[dim])
+                print('dim',dim)
+                print('value', value)
+                print('text_dim', text_dim)
+                print('text_low', text_low)
+                print('text_high', text_high)
 
                 if value_dim >= 0:
                     text_dim += text_high

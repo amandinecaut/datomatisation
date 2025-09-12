@@ -311,7 +311,7 @@ with tabs[2]:
         if left_t3.button("Run Clustering"):
             perform_clustering()
             right_t3.write("Clustering complete")
-            st.session_state.tab3_done = True
+            
    
             
             
@@ -364,7 +364,7 @@ with tabs[2]:
                 right_t3.plotly_chart(
                 st.session_state.fig_cluster, use_container_width=True, theme="streamlit"
                 )
-                
+                st.session_state.tab3_done = True
 
             else:
                 # First dimension selection
@@ -409,6 +409,7 @@ with tabs[2]:
                 right_t3.plotly_chart(
                     st.session_state.fig_cluster3d, use_container_width=True, theme="streamlit"
                 )
+                st.session_state.tab3_done = True
 
 
 

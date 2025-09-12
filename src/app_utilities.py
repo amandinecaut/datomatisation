@@ -8,6 +8,7 @@ import plotly.graph_objects as go
 import streamlit as st
 import pandas as pd
 import numpy as np
+import openai
 import json
 import ast
 import re
@@ -223,6 +224,7 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
 
         st.session_state.FA_component_dict = FA_component_dict
         st.session_state.FA_df = principalDf
+        print('st.session_state.FA_df',st.session_state.FA_df)
         
         vis = Visualisation(
             st.session_state.FA_df,
@@ -451,122 +453,86 @@ import toml
 _config = toml.load(".streamlit/secrets.toml")
 
 
-def get_model2():
-    """
-    Returns a tuple (model_object, service_name, config) depending on settings.
-    Automatically falls back to GPT if Gemini is preferred but fails.
-    """
-    primary_service = "gemini" if _config["settings"]["USE_GEMINI"] else "gpt"
-    fallback_service = "gpt" if primary_service == "gemini" else None
-
-    for service_name in [primary_service, fallback_service]:
-        print(service_name)
-        if service_name is None:
-            continue
-        config = _config["services"][service_name]
-        try:
-            if service_name == "gemini":
-                genai.configure(api_key=config["GEMINI_API_KEY"])
-                model = genai.GenerativeModel(
-                    model_name=config["GEMINI_CHAT_MODEL"],
-                    generation_config=GenerationConfig(max_output_tokens=1000)
-                )
-            elif service_name == "gpt":
-                model = GPTModel(
-                    api_key=config["GPT_KEY"],
-                    model_name=config.get("GPT_ENGINE", ""),
-                    base_url=config.get("GPT_BASE", ""),
-                    version=config.get("GPT_VERSION", "")
-                )
-            return model, service_name, config
-        except Exception as e:
-            #if "ResourceExhausted" in str(e) or "429" in str(e):
-            print(f"{service_name.capitalize()} quota exceeded. Trying fallback...")
-            continue
 
 def get_model():
     """
-    Try Gemini first; if it fails, fall back to GPT.
-    Returns (model, service_name, config).
+    Returns a list of model tuples (model_object, service_name) in order of preference.
     """
-    gemini_config = _config["services"].get("gemini", {})
-    gpt_config = _config["services"].get("gpt", {})
+    models = []
+    
+    # Try to initialize Gemini model
+    if _config["settings"].get("USE_GEMINI", True):
+        try:
+            config = _config["services"]["gemini"]
+            genai.configure(api_key=config["GEMINI_API_KEY"])
+            model = genai.GenerativeModel(
+                model_name=config["GEMINI_CHAT_MODEL"],
+                generation_config=genai.GenerationConfig(max_output_tokens=1000),
+            )
+            models.append((model, "gemini"))
+        except Exception as e:
+            print(f"Failed to initialize Gemini model: {e}")
 
-    # Try Gemini
+    # Try to initialize GPT model
     try:
-        genai.configure(api_key=gemini_config["GEMINI_API_KEY"])
-        model = genai.GenerativeModel(
-            model_name=gemini_config["GEMINI_CHAT_MODEL"],
-            generation_config=GenerationConfig(max_output_tokens=1000),
-        )
-        return model, "gemini", gemini_config
+        config = _config["services"]["gpt"]
+        model = "gpt-4o-mini"
+    
+        models.append((model, "gpt"))
     except Exception as e:
-        print(f"⚠️ Gemini failed: {e}. Falling back to GPT...")
-
-    # Fall back to GPT
-    try:
-        model = GPTModel(
-            api_key=gpt_config["GPT_KEY"],
-            model_name=gpt_config.get("GPT_ENGINE", "gpt-4"),
-            base_url=gpt_config.get("GPT_BASE", None),
-            version=gpt_config.get("GPT_VERSION", None),
-        )
-        return model, "gpt", gpt_config
-
-
-def get_generate2(msgs: dict) -> str:
-    """
-    Sends a message using Gemini first, otherwise GPT.
-    msgs format:
-    {
-        "system_instruction": str,
-        "history": list[dict],
-        "content": str
-    }
-    """
-    model, service_name, _ = get_model()
-
-    if service_name == "gemini":
-        chat = model.start_chat(history=msgs.get("history", []))
-        response = chat.send_message(
-            msgs["content"],
-            system_instruction=msgs.get("system_instruction", None),
-        )
-
-        if hasattr(response, "candidates") and response.candidates:
-            parts = response.candidates[0].content.parts
-            if parts and hasattr(parts[0], "text"):
-                return parts[0].text
-        raise RuntimeError("Gemini returned no valid text response.")
-
-    elif service_name == "gpt":
-        chat = GPTChat(model=model, history=msgs.get("history", []))
-        response = chat.send_message(msgs["content"])
-        return getattr(response, "text", str(response))
-
+        print(f"Failed to initialize GPT model: {e}")
+        
+    return models
 
 def get_generate(msgs):
     """
-    Sends a message using the current model and returns the text.
-    
-    msgs: {
-        "system_instruction": str,
-        "history": list,
-        "content": str
-    }
+    Attempts to use the primary model, and falls back to the next available model
+    in case of a 429 quota error.
     """
-    model, service_name, _ = get_model()
+    available_models = get_model()
 
-    if service_name == "gemini":
-        chat = model.start_chat(history=msgs["history"])
-        response = chat.send_message(
-        content=msgs["content"],
-        )
+    if not available_models:
+        raise RuntimeError("No models could be initialized. Please check your configuration.")
 
-        return response.candidates[0].content.parts[0].text
+    for model, service_name in available_models:
+        try:
+            print(f"Attempting to use {service_name.capitalize()} model...")
+            # This is where you would make the actual API call
+            if service_name == "gemini":
+                chat = model.start_chat(history=msgs["history"])
+                response = chat.send_message(content=msgs["content"],)
+                response = response.candidates[0].content.parts[0].text
+            elif service_name == "gpt":
+                
+                config = _config["services"]["gpt"]
+                openai.api_key = config.get("GPT_KEY")
+                openai.api_base = config.get("GPT_BASE")  
+                openai.api_type = "azure"
+                openai.api_version = config.get("GPT_VERSION")
+                
+                response = openai.ChatCompletion.create(
+                    model=model, 
+                    messages=msgs.get("history", []) + [
+                        {"role": "user", "content": msgs["content"]}
+                    ],
+                    temperature=1,
+                )
+                print(response)
+                response = response.choices[0].message["content"].strip()
+                
+                print(response)
+
+                
+            return response
+
+        except Exception as e:
+            error_str = str(e)
+            if "ResourceExhausted" in error_str or "429" in error_str:
+                print(f"{service_name.capitalize()} quota exceeded (429). Trying fallback...")
+                continue  # Try the next model in the list
+            else:
+                raise  # Re-raise other errors
 
 
-    elif service_name == "gpt":
-        chat = GPTChat(model=model, history=msgs.get("history", []))
-        response = chat.send_message(msgs["content"])
-        return response.text
+
+        
