@@ -509,16 +509,18 @@ def get_generate(msgs):
                 openai.api_base = config.get("GPT_BASE")  
                 openai.api_type = "azure"
                 openai.api_version = config.get("GPT_VERSION")
-                
-                response = openai.ChatCompletion.create(
-                    model=model, 
-                    messages=msgs.get("history", []) + [
-                        {"role": "user", "content": msgs["content"]}
-                    ],
+
+                msgs = transform_msgs_for_azure(msgs)
+    
+                # deployment_id must match your Azure deployment name
+                response_obj = openai.ChatCompletion.create(
+                    deployment_id=model,  
+                    messages=msgs,
                     temperature=1,
-                )
-                print(response)
-                response = response.choices[0].message["content"].strip()
+                    )
+
+                print(response_obj)
+                response = response_obj.choices[0].message["content"].strip()
                 
                 print(response)
 
@@ -535,4 +537,43 @@ def get_generate(msgs):
 
 
 
+def transform_msgs_for_azure(msgs):
+    """
+    Transform custom message structure into a list of messages compatible
+    with Azure OpenAI ChatCompletion API.
+    """
+    valid_roles = {"system", "assistant", "user", "function", "tool", "developer"}
+    azure_messages = []
+
+    # Add system instruction as first message if present
+    system_instruction = msgs.get("system_instruction")
+    if system_instruction:
+        azure_messages.append({"role": "system", "content": str(system_instruction)})
+
+    # Process history
+    for msg in msgs.get("history", []):
+        role = msg.get("role")
+        if role not in valid_roles:
+            continue  # skip invalid roles
+        parts = msg.get("parts")
+        if isinstance(parts, (list, tuple)):
+            content = " ".join(parts)
+        else:
+            content = str(parts)
+        azure_messages.append({"role": role, "content": content})
+
+    # Add current content
+    content_msg = msgs.get("content")
+    if content_msg:
+        role = content_msg.get("role", "user")
+        if role not in valid_roles:
+            role = "user"
+        parts = content_msg.get("parts")
+        if isinstance(parts, (list, tuple)):
+            content = " ".join(parts)
+        else:
+            content = str(parts)
+        azure_messages.append({"role": role, "content": content})
+
+    return azure_messages
         

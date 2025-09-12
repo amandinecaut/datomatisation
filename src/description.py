@@ -2,15 +2,17 @@ from google.generativeai import GenerationConfig
 from typing import List, Union, Dict, Optional
 from abc import ABC, abstractmethod
 import google.generativeai as genai
-
-
+from scipy.stats import zscore
 import streamlit as st
 import numpy as np
 import pandas as pd
+import openai
+import json
+import toml
 import re
 
-import json
-from scipy.stats import zscore
+
+
 
 
 
@@ -35,6 +37,7 @@ class Description(ABC):
     def __init__(self):
         self.synthesized_text = self.synthesize_text()
         self.messages = self.setup_messages()
+        self._config = toml.load(".streamlit/secrets.toml")
 
     def synthesize_text(self) -> str:
         """
@@ -195,7 +198,7 @@ class Description(ABC):
         answer = self.get_generate(msgs, 150)
        
 
-        return answer.text
+        return answer
 
     
 
@@ -309,7 +312,7 @@ class CreateDescription(Description):
             #text += 'The description is ' + str(list_description_cluster)
         return text
         
-### TO DO : a file for the cluster description/file for the individual.
+    ### TO DO : a file for the cluster description/file for the individual.
     def synthesize_text(self):
 
         description = self.get_description(self.indice)
@@ -372,7 +375,7 @@ class CreateDescription(Description):
             "content": {"role": "user", "parts": text},
             }
         text_generate = self.get_generate(msgs, max_output_token = 5)
-        return text_generate.candidates[0].content.parts[0].text
+        return text_generate #.candidates[0].content.parts[0].text
     
     def get_cluster_description(self, text):
 
@@ -388,21 +391,129 @@ class CreateDescription(Description):
                 ],
             "content": {"role": "user", "parts": text},
             }
-        text_generate = self.get_generate(msgs, max_output_token = 1000)
+        text_generate = self.get_generate(msgs,max_output_token = 500)
         
-        return text_generate.candidates[0].content.parts[0].text
+        return text_generate 
+
+
+    def get_model(self):
+        """
+        Returns a list of model tuples (model_object, service_name) in order of preference.
+        """
+        _config = toml.load(".streamlit/secrets.toml")
+        models = []
+    
+        # Try to initialize Gemini model
+        if _config["settings"].get("USE_GEMINI", True):
+            try:
+                config = _config["services"]["gemini"]
+                genai.configure(api_key=config["GEMINI_API_KEY"])
+                model = genai.GenerativeModel(
+                    model_name=config["GEMINI_CHAT_MODEL"],
+                )
+                models.append((model, "gemini"))
+            except Exception as e:
+                print(f"Failed to initialize Gemini model: {e}")
+
+        # Try to initialize GPT model
+        try:
+            config = _config["services"]["gpt"]
+            model = "gpt-4o-mini"
+    
+            models.append((model, "gpt"))
+        except Exception as e:
+            print(f"Failed to initialize GPT model: {e}")
+        
+        return models
 
     def get_generate(self, msgs, max_output_token):
-        model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash",
-            system_instruction=msgs["system_instruction"],
-            generation_config=GenerationConfig(max_output_tokens=max_output_token),
-            )
-        chat = model.start_chat(history=msgs["history"])
-        response = chat.send_message(
-            content=msgs["content"],
-            )
-        return response
-        
+        """
+        Attempts to use the primary model, and falls back to the next available model
+        in case of a 429 quota error.
+        """
+        available_models = self.get_model()
+
+        if not available_models:
+            raise RuntimeError("No models could be initialized. Please check your configuration.")
+
+        for model, service_name in available_models:
+            try:
+                print(f"Attempting to use {service_name.capitalize()} model...")
+                
+                # This is where you would make the actual API call
+                if service_name == "gemini":
+                    config = genai.GenerationConfig(max_output_tokens=max_output_token)
+                    chat = model.start_chat(history=msgs["history"])
+                    response = chat.send_message(content=msgs["content"],)
+                    response = response.candidates[0].content.parts[0].text
+                    
+                elif service_name == "gpt":
+                    config = self._config["services"]["gpt"]
+                    openai.api_key = config.get("GPT_KEY")
+                    openai.api_base = config.get("GPT_BASE")  
+                    openai.api_type = "azure"
+                    openai.api_version = config.get("GPT_VERSION")
+
+                    msgs = self.transform_msgs_for_azure(msgs)
+    
+                    # deployment_id must match your Azure deployment name
+                    response_obj = openai.ChatCompletion.create(
+                        deployment_id=model,  
+                        messages=msgs,
+                        temperature=1,
+                        )       
+                    response = response_obj.choices[0].message["content"].strip()
+              
+                return response
+
+            except Exception as e:
+                error_str = str(e)
+                if "ResourceExhausted" in error_str or "429" in error_str:
+                    print(f"{service_name.capitalize()} quota exceeded (429). Trying fallback...")
+                    continue  # Try the next model in the list
+                else:
+                    raise  # Re-raise other errors
+
+
+
+    def transform_msgs_for_azure(self, msgs):
+        """
+        Transform custom message structure into a list of messages compatible
+        with Azure OpenAI ChatCompletion API.
+        """
+        valid_roles = {"system", "assistant", "user", "function", "tool", "developer"}
+        azure_messages = []
+
+        # Add system instruction as first message if present
+        system_instruction = msgs.get("system_instruction")
+        if system_instruction:
+            azure_messages.append({"role": "system", "content": str(system_instruction)})
+
+        # Process history
+        for msg in msgs.get("history", []):
+            role = msg.get("role")
+            if role not in valid_roles:
+                continue  # skip invalid roles
+            parts = msg.get("parts")
+            if isinstance(parts, (list, tuple)):
+                content = " ".join(parts)
+            else:
+                content = str(parts)
+            azure_messages.append({"role": role, "content": content})
+
+        # Add current content
+        content_msg = msgs.get("content")
+        if content_msg:
+            role = content_msg.get("role", "user")
+            if role not in valid_roles:
+                role = "user"
+            parts = content_msg.get("parts")
+            if isinstance(parts, (list, tuple)):
+                content = " ".join(parts)
+            else:
+                content = str(parts)
+            azure_messages.append({"role": role, "content": content})
+
+        return azure_messages
 
 
