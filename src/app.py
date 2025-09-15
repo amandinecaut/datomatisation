@@ -34,11 +34,6 @@ from description import CreateDescription
 
 
 
-
-
-
-
-
 st.set_page_config(layout="wide")
 
 
@@ -118,6 +113,31 @@ with tabs[0]:
 
     if "df_full" not in st.session_state:
         right_t1.write("Load data to view information")
+        right_t1.markdown("⚠️ The uploaded dataset must be a **numerical DataFrame** with only numeric columns.")
+
+        # Show example dataframe image (replace with your actual image path or URL)
+        right_t1.image("./data/example_dataframe.png", 
+                       caption="Example of a valid numerical DataFrame",
+                       width=450 
+                      )
+
+        right_t1.markdown("The uploaded column mapping could be or a `.json` file, an Excel file (`.xlsx` or `.xls`)")
+
+        # Show example dataframe image (replace with your actual image path or URL)
+        right_t1.image("./data/example_json.png", 
+                       caption="Example of a valid json file",
+                       width=450 
+                      )
+        right_t1.markdown("The Excel file (`.xlsx` or `.xls`) must have:\n"
+            "- A first column named **`Key`**\n"
+            "- A second column named **`Value`**"
+            )
+        right_t1.image("./data/example_xlsx.png", 
+                       caption="Example of a valid xlsx file",
+                       width=450 
+                      )
+
+        
     else:
         expander_sample = right_t1.expander("Sample of the data")
         expander_sample.write(st.session_state.df_full.sample(5))
