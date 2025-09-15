@@ -12,6 +12,7 @@ import openai
 import json
 import ast
 import re
+import os
 
 
 DEFAULT_CUM_EXP = 3
@@ -23,7 +24,7 @@ DEFAULT_NUM_CLUSTERS = 5
 def set_default_data():
     clear_session_state()
     load_data("./data/data-final-sample.csv")
-    load_map("./data/map.json")
+    load_map("./data/map.xlsx")
 
     
 
@@ -78,6 +79,7 @@ def load_data(file=None):
 
     update_df()
 
+
 def update_df(ignore_cols=[]):
     df = st.session_state.df_full.copy()
 
@@ -113,12 +115,42 @@ def update_df(ignore_cols=[]):
     if "num_clusters" in st.session_state:
         del st.session_state["num_clusters"]
 
+
 def load_map(file=None):
+    if file is None:
+        file = st.session_state.map
+
+    if isinstance(file, str):
+        file_extension = os.path.splitext(file)[1].lower()
+        if file_extension == '.json':
+            with open(file, "r") as f:
+                map = json.load(f)
+        elif file_extension in ['.xlsx', '.xls']:
+            df = pd.read_excel(file)
+            map = dict(zip(df["Key"], df["Value"]))
+        else:
+            raise ValueError(f"Unsupported file type: {file_extension}")
+    else:
+        file_extension = os.path.splitext(file.name)[1].lower()
+        if file_extension == '.json':
+            with open(file, "r") as f:
+                map = json.load(file)
+        elif file_extension in ['.xlsx', '.xls']:
+            df = pd.read_excel(file)
+            map = dict(zip(df["Key"], df["Value"]))
+        else:
+            raise ValueError(f"Unsupported file type: {file_extension}")
+            
+    st.session_state.col_mapping = map
+    
+
+
+
+def load_map1(file=None):
 
     if file is None:
         file = st.session_state.map
-    # st.session_state.map = "./data/map.json"
-    # print("loading map")
+   
     if isinstance(file, str):
         with open(file, "r") as f:
             map = json.load(f)

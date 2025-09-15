@@ -108,7 +108,7 @@ with tabs[0]:
     left_t1.markdown("#### Upload column name mapping")
     left_t1.file_uploader(
         "Choose a file",
-        type=["json"],
+        type=["json", "xlsx", "xls"],
         key="map",
         on_change=load_map,
     )
