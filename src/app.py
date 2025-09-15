@@ -205,9 +205,19 @@ with tabs[1]:
         right_t2 = right_t2.container(height=height, border=3)
 
         left_t2.markdown("### Select a tool")
-
+        
         # Choose the analysis
+
+        if "analysis" not in st.session_state:
+            st.session_state.analysis = None
+        # Update the selected analysis
         if left_t2.button("Factor Analysis"):
+            st.session_state.analysis = "FA"
+
+        if left_t2.button("Logistic Regression"):
+            st.session_state.analysis = "LR"
+    
+        if st.session_state.analysis == "FA":
             left_t2.markdown("### Factor Analysis")
 
             cum_exp = left_t2.slider(
@@ -247,7 +257,7 @@ with tabs[1]:
                 expander_exp = right_t2.expander("Factors components")
                 expander_exp.write(st.session_state.components)
 
-        if left_t2.button("Logistic Regression"):
+        if st.session_state.analysis == "LR":
             right_t2.markdown("---")
             right_t2.write("## Logistic Regression results")
             
