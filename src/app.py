@@ -72,9 +72,9 @@ for key, value in default_values.items():
 
 
 # Add and app header
-st.title("Automated Factor Analysis pipeline")
+st.title("Automated DatAnalyst Pipeline")
 
-tabs = st.tabs(["Load data", "Factor Analysis", "Clustering", "View"])
+tabs = st.tabs(["Load data", "Analysis tools", "Clustering", "View"])
 
 
 # Load Data
@@ -194,7 +194,7 @@ with tabs[0]:
         st.session_state.tab1_done = True
         
     
-# "Factor Analysis"    
+# "Analysis Tools"    
 with tabs[1]:
     if not st.session_state.get("tab1_done", False):
         st.warning("You must load your data first!")
@@ -203,80 +203,89 @@ with tabs[1]:
         left_t2, right_t2 = st.columns([0.3, 0.7])
         left_t2 = left_t2.container(height=height, border=0)
         right_t2 = right_t2.container(height=height, border=3)
-        left_t2.markdown("### Factor Analysis")
 
-        cum_exp = left_t2.slider(
-            "Select the number of components",
-            min_value=1,
-            max_value=default_max_components,
-            value=app_utilities.DEFAULT_CUM_EXP,
-            step=1,
-            key="cum_exp",
-            on_change=perform_FA,
-        )
+        left_t2.markdown("### Select a tool")
 
-        if left_t2.button("Run Factor Analysis"):
-            perform_FA()
+        # Choose the analysis
+        if left_t2.button("Factor Analysis"):
+            left_t2.markdown("### Factor Analysis")
 
-        if "df_full" not in st.session_state:
-            right_t2.write("Load data to perform Factor Analysis")
-        elif len(st.session_state.df_filtered) < 10:
-            right_t2.write("Not enough data to perform Factor Analysis")
-        elif "N" not in st.session_state:
-            right_t2.write("Select a number of factor to perform Factor Analysis")
-        elif "N" in st.session_state:
-            right_t2.write("## Automated labeling")
-            display_results(right_t2)
-
-            left_t2.write(
-                f"Number of components: {st.session_state.N} (max {default_max_components})"
+            cum_exp = left_t2.slider(
+                "Select the number of components",
+                min_value=1,
+                max_value=default_max_components,
+                value=app_utilities.DEFAULT_CUM_EXP,
+                step=1,
+                key="cum_exp",
+                on_change=perform_FA,
             )
 
+            if left_t2.button("Run Factor Analysis"):
+                perform_FA()
+
+            if "df_full" not in st.session_state:
+                right_t2.write("Load data to perform Factor Analysis")
+            elif len(st.session_state.df_filtered) < 10:
+                right_t2.write("Not enough data to perform Factor Analysis")
+            elif "N" not in st.session_state:
+                right_t2.write("Select a number of factor to perform Factor Analysis")
+            elif "N" in st.session_state:
+                right_t2.write("## Automated labeling")
+                display_results(right_t2)
+
+                left_t2.write(
+                    f"Number of components: {st.session_state.N} (max {default_max_components})"
+                )
+
+                right_t2.markdown("---")
+
+                right_t2.write("## Factor Analysis results")
+
+                expander_FA = right_t2.expander("Factor Analysis results")
+                expander_FA.write(st.session_state.FA_df)
+
+                expander_exp = right_t2.expander("Factors components")
+                expander_exp.write(st.session_state.components)
+
+        if left_t2.button("Logistic Regression"):
             right_t2.markdown("---")
-
-            right_t2.write("## Factor Analysis results")
-
-            expander_FA = right_t2.expander("Factor Analysis results")
-            expander_FA.write(st.session_state.FA_df)
-
-            expander_exp = right_t2.expander("Factors components")
-            expander_exp.write(st.session_state.components)
-
-
+            right_t2.write("## Logistic Regression results")
+            
             right_t2.markdown("---")
             right_t2.write("## Question and Answer pairs")
 
 
 
 
-            activate = ["Yes", "No"]
-            introduction_choice = left_t2.radio("Do you want an introduction?", activate, key="intro_choice")
 
-            # Show text area only if "Yes" is selected
-            text = right_t2.text_area("Enter your introduction here:") if introduction_choice == "Yes" else None
+        activate = ["Yes", "No"]
+        introduction_choice = left_t2.radio("Do you want an introduction?", activate, key="intro_choice")
 
-            # Disable button if "Yes" is selected but text is empty
-            generate_disabled = introduction_choice == "Yes" and (not text or not text.strip())
+        # Show text area only if "Yes" is selected
+        text = right_t2.text_area("Enter your introduction here:") if introduction_choice == "Yes" else None
 
-            if right_t2.button("Generate Q&A", disabled=generate_disabled):
-                QandA = create_QandA(text)
+        # Disable button if "Yes" is selected but text is empty
+        generate_disabled = introduction_choice == "Yes" and (not text or not text.strip())
 
-                if QandA and "User" in QandA and "Assistant" in QandA:
-                # Display Q&A
-                    for i, (q, a) in enumerate(zip(QandA['User'], QandA['Assistant']), start=1):
-                        right_t2.markdown(f"### **Question {i}:** {q}")
-                        right_t2.markdown(f"**Answer:** {a}")
-                        right_t2.write("\n")
+        if right_t2.button("Generate Q&A", disabled=generate_disabled):
+            QandA = create_QandA(text)
 
-                # Save Q&A as CSV
-                QandA_df = pd.DataFrame(QandA)
-                csv_path = './data/describe/QandA_data.csv'
-                QandA_df.to_csv(csv_path, index=False)
+            if QandA and "User" in QandA and "Assistant" in QandA:
+            # Display Q&A
+                for i, (q, a) in enumerate(zip(QandA['User'], QandA['Assistant']), start=1):
+                    right_t2.markdown(f"### **Question {i}:** {q}")
+                    right_t2.markdown(f"**Answer:** {a}")
+                    right_t2.write("\n")
 
-                st.success("Q&A generated and saved!")
-                st.session_state.tab2_done = True
-            else:
-                st.error("Failed to generate Q&A. Please check your input.")
+            # Save Q&A as CSV
+            QandA_df = pd.DataFrame(QandA)
+            csv_path = './data/describe/QandA_data.csv'
+            QandA_df.to_csv(csv_path, index=False)
+
+            st.success("Q&A generated and saved!")
+            st.session_state.tab2_done = True
+        else:
+            st.error("Failed to generate Q&A. Please check your input.")
 
      
 
