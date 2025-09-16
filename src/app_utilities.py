@@ -1,4 +1,10 @@
-from visualisation_utilities import Visualisation, hex_to_rgb, rgb_to_color, ClusterVisualisation, ClusterVisualisation3D
+from visualisation_utilities import (
+    Visualisation,
+    hex_to_rgb,
+    rgb_to_color,
+    ClusterVisualisation,
+    ClusterVisualisation3D,
+)
 from clustering import Cluster
 from sklearn.decomposition import FactorAnalysis
 from sklearn.preprocessing import StandardScaler
@@ -20,57 +26,87 @@ DEFAULT_SUM_THRESHOLD = 0.6
 DEFAULT_MAX_COMPONENTS = 14
 DEFAULT_NUM_CLUSTERS = 5
 
+default_values = {
+    "u_labels": np.array([]),
+    "centroids": None,
+    "ind_col_map": None,
+    "selected_entity": None,
+    "FA_component_dict": {},
+    "list_cluster_name": None,
+    "list_description_cluster": None,
+    "fig_base": go.Figure(),
+    "entity_col": "Index",
+    "FA_df": pd.DataFrame(),
+    "tab1_done": False,
+    "tab2_done": False,
+    "tab3_done": False,
+    "tab4_done": False,
+    "ignore_cols": [],
+    "data_loading": False,
+}
+
 
 def set_default_data():
-    clear_session_state()
+    clear_session_state(skip=["file", "map"])
     load_data("./data/data-final-sample.csv")
     load_map("./data/map.xlsx")
 
-    
 
 def clear_session_state(skip=[]):
     for key in st.session_state.keys():
         if key not in skip:
             del st.session_state[key]
 
-    if "entity_col" not in st.session_state:
-        st.session_state.entity_col = "Index"
-    if "FA_df" not in st.session_state:
-        st.session_state.FA_df = None
+    # if "entity_col" not in st.session_state:
+    #     st.session_state.entity_col = "Index"
+    # if "FA_df" not in st.session_state:
+    #     st.session_state.FA_df = None
+
+    for key, value in default_values.items():
+        if key not in st.session_state:
+            if key not in skip:
+                st.session_state[key] = value
+
 
 def load_new_data():
-    clear_session_state(skip=["file"])
+    clear_session_state(skip=["file", "map"])
     load_data()
+
 
 def detect_delimiter(first_line):
     # Common delimiters to try
-    delimiters = [',', ';', '\t', '|']
-    
+    delimiters = [",", ";", "\t", "|"]
+
     # Try each delimiter and count how many columns we get
     best_delimiter = None
     max_columns = 0
-    
+
     for delimiter in delimiters:
         # Try to split the first line with the delimiter
         columns = first_line.split(delimiter)
         if len(columns) > max_columns:
             max_columns = len(columns)
             best_delimiter = delimiter
-    
+
     return best_delimiter
 
+
 def load_data(file=None):
+
+    st.session_state.data_loading = True
+
     if file is None:
-        file = st.session_state.file
+        file = st.session_state["file"]
 
     delimiter = None
     if isinstance(file, st.runtime.uploaded_file_manager.UploadedFile):
         for line in file:
-            line = line.decode('utf-8')
+            line = line.decode("utf-8")
             delimiter = detect_delimiter(line)
             break
         file.seek(0)
-    st.session_state.df_full = pd.read_csv(file, sep=delimiter)
+
+    st.session_state.df_full = pd.read_csv(file, sep=delimiter, engine="python")
     # remove current map
     st.session_state.col_mapping = {}
 
@@ -78,6 +114,8 @@ def load_data(file=None):
     #     del st.session_state["map"]
 
     update_df()
+
+    st.session_state.data_loading = False
 
 
 def update_df(ignore_cols=[]):
@@ -100,13 +138,12 @@ def update_df(ignore_cols=[]):
         cols = [st.session_state.entity_col] + st.session_state.features
 
     st.session_state.df_filtered = df[cols].dropna()
-    
+
     # set the entity column as the index
     if st.session_state.entity_col != "Index":
         st.session_state.df_filtered.set_index(
             st.session_state.entity_col, inplace=True
         )
-        
 
     # delete cum_exp from session state
     if "cum_exp" in st.session_state:
@@ -117,40 +154,38 @@ def update_df(ignore_cols=[]):
 
 
 def load_map(file=None):
+
     if file is None:
-        file = st.session_state.map
+        file = st.session_state["map"]
 
     if isinstance(file, str):
         file_extension = os.path.splitext(file)[1].lower()
-        if file_extension == '.json':
+        if file_extension == ".json":
             with open(file, "r") as f:
                 map = json.load(f)
-        elif file_extension in ['.xlsx', '.xls']:
+        elif file_extension in [".xlsx", ".xls"]:
             df = pd.read_excel(file)
             map = dict(zip(df["Key"], df["Value"]))
         else:
             raise ValueError(f"Unsupported file type: {file_extension}")
     else:
         file_extension = os.path.splitext(file.name)[1].lower()
-        if file_extension == '.json':
-            with open(file, "r") as f:
-                map = json.load(file)
-        elif file_extension in ['.xlsx', '.xls']:
+        if file_extension == ".json":
+            map = json.load(file)
+        elif file_extension in [".xlsx", ".xls"]:
             df = pd.read_excel(file)
             map = dict(zip(df["Key"], df["Value"]))
         else:
             raise ValueError(f"Unsupported file type: {file_extension}")
-            
-    st.session_state.col_mapping = map
-    
 
+    st.session_state.col_mapping = map
 
 
 def load_map1(file=None):
 
     if file is None:
         file = st.session_state.map
-   
+
     if isinstance(file, str):
         with open(file, "r") as f:
             map = json.load(f)
@@ -159,8 +194,15 @@ def load_map1(file=None):
 
     st.session_state.col_mapping = map
 
+
 def get_defaults():
-    return DEFAULT_CUM_EXP, DEFAULT_SUM_THRESHOLD, DEFAULT_MAX_COMPONENTS, DEFAULT_NUM_CLUSTERS
+    return (
+        DEFAULT_CUM_EXP,
+        DEFAULT_SUM_THRESHOLD,
+        DEFAULT_MAX_COMPONENTS,
+        DEFAULT_NUM_CLUSTERS,
+    )
+
 
 def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
 
@@ -175,7 +217,7 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
         # Factor Analysis
         FA = FactorAnalysis(n_components=components)
         principalComponents = FA.fit_transform(x)
-        
+
         principalDf = pd.DataFrame(
             data=principalComponents,
             columns=[
@@ -183,8 +225,7 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
             ],
         )
 
-        
-        #st.session_state.exp_ratio = PCA.explained_variance_ratio_ ## This is only for PCA 
+        # st.session_state.exp_ratio = PCA.explained_variance_ratio_ ## This is only for PCA
 
         st.session_state.N = components
 
@@ -197,26 +238,25 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
 
             n = 1
             c2 = components[i] ** 2  # np.abs(components[i])
-            
+
             while sum(c2[np.argsort(c2)[::-1][:n]]) < threshold:
                 n += 1
             # make n even
             if n % 2 != 0:
                 n += 1
 
-            #top_components = [
+            # top_components = [
             #    c for c in np.argsort(c2)[::-1][:n] if components[i][c] > 0
-            #]
-            #bottom_components = [
+            # ]
+            # bottom_components = [
             #    c for c in np.argsort(c2)[::-1][:n] if components[i][c] < 0
-            #]
-            
+            # ]
+
             top_components = np.argsort(components[i])[::-1][:n]
             bottom_components = np.argsort(components[i])[:n]
 
-
-            #print(f"top: {top_components}")
-            #print(f"bottom: {bottom_components}")
+            # print(f"top: {top_components}")
+            # print(f"bottom: {bottom_components}")
 
             # n = 5
             # top_components = np.argsort(components[i])[::-1][:n]
@@ -237,14 +277,12 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
             # text = "Features:\n"
             # text += ",\n".join(top_features + bottom_features)
 
-           
             text = "Bottom 5 features:\n"
             text += ", ".join(bottom_features)
             text += "\n\nTop 5 features:\n"
             text += ", ".join(top_features)
-            
-            label = get_component_labels(text)
 
+            label = get_component_labels(text)
 
             FA_component_dict[f"Principal component {i}"] = {
                 "label": label,
@@ -256,35 +294,39 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
 
         st.session_state.FA_component_dict = FA_component_dict
         st.session_state.FA_df = principalDf
-        print('st.session_state.FA_df',st.session_state.FA_df)
-        
+        print("st.session_state.FA_df", st.session_state.FA_df)
+
         vis = Visualisation(
             st.session_state.FA_df,
             {k: v["label"] for k, v in st.session_state.FA_component_dict.items()},
         )
         st.session_state.fig_base = vis.fig
         st.session_state.df_z_scores = vis.df_z_scores
-        
+
     else:
         st.session_state.FA_component_dict = {}
         st.session_state.FA_df = None
-        
 
 
 def perform_clustering(num_clusters=DEFAULT_NUM_CLUSTERS):
     if "num_clusters" in st.session_state:
-            num_clusters = st.session_state.num_clusters
+        num_clusters = st.session_state.num_clusters
     else:
         num_clusters = DEFAULT_NUM_CLUSTERS
-    
 
-    cluster = Cluster(st.session_state.FA_df,
-            {k: v["label"] for k, v in st.session_state.FA_component_dict.items()},
-            num_clusters
-        )
-    st.session_state.u_labels, st.session_state.centroids, st.session_state.ind_col_map = cluster.u_labels , cluster.centroids,  cluster.ind_col_map
+    cluster = Cluster(
+        st.session_state.FA_df,
+        {k: v["label"] for k, v in st.session_state.FA_component_dict.items()},
+        num_clusters,
+    )
+    (
+        st.session_state.u_labels,
+        st.session_state.centroids,
+        st.session_state.ind_col_map,
+    ) = (cluster.u_labels, cluster.centroids, cluster.ind_col_map)
     st.session_state.FA_df = cluster.FA_df
-            
+
+
 def get_component_labels(text):
 
     msgs = {
@@ -296,16 +338,18 @@ def get_component_labels(text):
                     "Make a label from the following texts that come from factor analysis."
                     "The label must strictly follow the format: 'bottom features vs top features'. "
                     "The label should be of the form x vs y, where x is one or more adjectives that describes an entity that has the bottom features and y is one or more adjectives that describes an entity that has the top features."
-                    "Output a label only."),
+                    "Output a label only."
+                ),
             },
             {"role": "model", "parts": "Sure!"},
         ],
         "content": {"role": "user", "parts": text},
     }
 
-    text_generate =  get_generate(msgs)
+    text_generate = get_generate(msgs)
 
     return text_generate
+
 
 def display_results(component):
     results_dict = st.session_state.FA_component_dict
@@ -330,9 +374,9 @@ def display_results(component):
         expander = component.expander(
             f"{key.capitalize()}: {results_dict[key]['label']}"
         )
-        #expander.write(
+        # expander.write(
         #    f"Explained variance ratio: {results_dict[key]['explained_variance_ratio']}"
-        #)
+        # )
         expander.write(f"Top features:")
         for i in range(len(results_dict[key]["top"])):
             # indent the text
@@ -345,6 +389,7 @@ def display_results(component):
                 f"- ({results_dict[key]['values_bottom'][i]}) {results_dict[key]['bottom'][i]}"
             )
 
+
 def add_to_fig():
     # print("updating fig")
 
@@ -354,7 +399,7 @@ def add_to_fig():
     )
 
     df = st.session_state.df_z_scores.iloc[ind, :].to_frame().T
-     
+
     color = st.get_option("theme.primaryColor")
     if color is None:
         color = "#FF4B4B"
@@ -369,33 +414,35 @@ def add_to_fig():
 
     # st.session_state.fig = fig
 
+
 def update_fig_cluster():
 
     if "fig_cluster" in st.session_state:
         del st.session_state["fig_cluster"]
-    
 
     vis_cluster = ClusterVisualisation(
-            st.session_state.FA_df,
-            {k: v["label"] for k, v in st.session_state.FA_component_dict.items()}, 
-            st.session_state.u_labels, 
-            st.session_state.centroids, 
-            st.session_state.ind_col_map
-        )
+        st.session_state.FA_df,
+        {k: v["label"] for k, v in st.session_state.FA_component_dict.items()},
+        st.session_state.u_labels,
+        st.session_state.centroids,
+        st.session_state.ind_col_map,
+    )
     st.session_state.fig_cluster = vis_cluster.fig
+
 
 def update_fig_cluster3d():
     if "fig_cluster3d" in st.session_state:
         del st.session_state["fig_cluster3d"]
 
     vis_cluster = ClusterVisualisation3D(
-            st.session_state.FA_df,
-            {k: v["label"] for k, v in st.session_state.FA_component_dict.items()}, 
-            st.session_state.u_labels, 
-            st.session_state.centroids, 
-            st.session_state.ind_col_map
-        )
+        st.session_state.FA_df,
+        {k: v["label"] for k, v in st.session_state.FA_component_dict.items()},
+        st.session_state.u_labels,
+        st.session_state.centroids,
+        st.session_state.ind_col_map,
+    )
     st.session_state.fig_cluster3d = vis_cluster.fig
+
 
 def display_cluster_color(cluster_name, color, size=40):
     square_html = f"""
@@ -417,15 +464,15 @@ def display_cluster_color(cluster_name, color, size=40):
 
 def create_QandA(text: str | None):
     FA_component_dict = st.session_state.FA_component_dict
-    component_labels = [details['label'] for _, details in FA_component_dict.items()]
+    component_labels = [details["label"] for _, details in FA_component_dict.items()]
 
     # Combine introduction text if provided
     if text:
         text = f"{text}\n" + "\n".join(component_labels)
         intro_instruction = "You have an introduction of an article about a subject and"
     else:
-        text = [details['label'] for _, details in FA_component_dict.items()]
-       
+        text = [details["label"] for _, details in FA_component_dict.items()]
+
         intro_instruction = ""
 
     # Build message
@@ -449,20 +496,18 @@ def create_QandA(text: str | None):
 
     # Get and clean Q&A
     QandA = get_generate(msgs)
-    QandA = QandA.replace("data = ", "").replace("python", "").replace("```", "").strip()
+    QandA = (
+        QandA.replace("data = ", "").replace("python", "").replace("```", "").strip()
+    )
     print(QandA)
     if "=" in QandA:
         QandA = QandA.split("=", 1)[1].strip()
-    
+
     match = re.search(r"\{.*\}", QandA, re.DOTALL)
     if match:
         QandA = match.group(0)
 
-    
-
     return ast.literal_eval(QandA)
-
-
 
 
 def get_generate1(msgs):
@@ -480,10 +525,9 @@ def get_generate1(msgs):
     return response.candidates[0].content.parts[0].text
 
 
-
 import toml
-_config = toml.load(".streamlit/secrets.toml")
 
+_config = toml.load(".streamlit/secrets.toml")
 
 
 def get_model():
@@ -491,7 +535,7 @@ def get_model():
     Returns a list of model tuples (model_object, service_name) in order of preference.
     """
     models = []
-    
+
     # Try to initialize Gemini model
     if _config["settings"].get("USE_GEMINI", True):
         try:
@@ -509,12 +553,13 @@ def get_model():
     try:
         config = _config["services"]["gpt"]
         model = "gpt-4o-mini"
-    
+
         models.append((model, "gpt"))
     except Exception as e:
         print(f"Failed to initialize GPT model: {e}")
-        
+
     return models
+
 
 def get_generate(msgs):
     """
@@ -524,7 +569,9 @@ def get_generate(msgs):
     available_models = get_model()
 
     if not available_models:
-        raise RuntimeError("No models could be initialized. Please check your configuration.")
+        raise RuntimeError(
+            "No models could be initialized. Please check your configuration."
+        )
 
     for model, service_name in available_models:
         try:
@@ -532,41 +579,43 @@ def get_generate(msgs):
             # This is where you would make the actual API call
             if service_name == "gemini":
                 chat = model.start_chat(history=msgs["history"])
-                response = chat.send_message(content=msgs["content"],)
+                response = chat.send_message(
+                    content=msgs["content"],
+                )
                 response = response.candidates[0].content.parts[0].text
             elif service_name == "gpt":
-                
+
                 config = _config["services"]["gpt"]
                 openai.api_key = config.get("GPT_KEY")
-                openai.api_base = config.get("GPT_BASE")  
+                openai.api_base = config.get("GPT_BASE")
                 openai.api_type = "azure"
                 openai.api_version = config.get("GPT_VERSION")
 
                 msgs = transform_msgs_for_azure(msgs)
-    
+
                 # deployment_id must match your Azure deployment name
                 response_obj = openai.ChatCompletion.create(
-                    deployment_id=model,  
+                    deployment_id=model,
                     messages=msgs,
                     temperature=1,
-                    )
+                )
 
                 print(response_obj)
                 response = response_obj.choices[0].message["content"].strip()
-                
+
                 print(response)
 
-                
             return response
 
         except Exception as e:
             error_str = str(e)
             if "ResourceExhausted" in error_str or "429" in error_str:
-                print(f"{service_name.capitalize()} quota exceeded (429). Trying fallback...")
+                print(
+                    f"{service_name.capitalize()} quota exceeded (429). Trying fallback..."
+                )
                 continue  # Try the next model in the list
             else:
                 raise  # Re-raise other errors
-
 
 
 def transform_msgs_for_azure(msgs):
@@ -608,4 +657,3 @@ def transform_msgs_for_azure(msgs):
         azure_messages.append({"role": role, "content": content})
 
     return azure_messages
-        
