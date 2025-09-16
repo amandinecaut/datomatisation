@@ -41,7 +41,6 @@ default_values = {
     "tab2_done": False,
     "tab3_done": False,
     "tab4_done": False,
-    "ignore_cols": [],
     "data_loading": False,
 }
 
@@ -56,11 +55,6 @@ def clear_session_state(skip=[]):
     for key in st.session_state.keys():
         if key not in skip:
             del st.session_state[key]
-
-    # if "entity_col" not in st.session_state:
-    #     st.session_state.entity_col = "Index"
-    # if "FA_df" not in st.session_state:
-    #     st.session_state.FA_df = None
 
     for key, value in default_values.items():
         if key not in st.session_state:
@@ -127,10 +121,10 @@ def update_df(ignore_cols=[]):
     #     features = df.columns.tolist()
     if "ignore_cols" in st.session_state:
         ignore_cols = st.session_state.ignore_cols
-
     features = [f for f in df.columns if f not in ignore_cols]
     features = [f for f in features if f != st.session_state.entity_col]
     st.session_state.features = features
+    
 
     if st.session_state.entity_col not in df.columns:
         cols = st.session_state.features
@@ -156,7 +150,7 @@ def update_df(ignore_cols=[]):
 def load_map(file=None):
 
     if file is None:
-        file = st.session_state["map"]
+        file = st.session_state.map
 
     if isinstance(file, str):
         file_extension = os.path.splitext(file)[1].lower()
@@ -174,11 +168,15 @@ def load_map(file=None):
             map = json.load(file)
         elif file_extension in [".xlsx", ".xls"]:
             df = pd.read_excel(file)
+            print(df)
+            
             map = dict(zip(df["Key"], df["Value"]))
+            print(map)
         else:
             raise ValueError(f"Unsupported file type: {file_extension}")
 
     st.session_state.col_mapping = map
+    
 
 
 def load_map1(file=None):

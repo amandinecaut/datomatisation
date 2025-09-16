@@ -95,12 +95,12 @@ with tabs[0]:
     right_t1.markdown("### Data information")
 
     if "df_full" not in st.session_state:
-        right_t1.write("Load data to view information")
+        right_t1.markdown(":sparkles: Load data to view information :sparkles:")
         right_t1.markdown(
             "⚠️ The uploaded dataset must be a **numerical DataFrame** with only numeric columns."
         )
 
-        # Show example dataframe image (replace with your actual image path or URL)
+        # Show example dataframe image 
         right_t1.image(
             "./data/example_dataframe.png",
             caption="Example of a valid numerical DataFrame",
@@ -111,7 +111,7 @@ with tabs[0]:
             "The uploaded column mapping could be or a `.json` file, an Excel file (`.xlsx` or `.xls`)"
         )
 
-        # Show example dataframe image (replace with your actual image path or URL)
+        # Show example column mapping image 
         right_t1.image(
             "./data/example_json.png", caption="Example of a valid json file", width=450
         )
@@ -201,14 +201,14 @@ with tabs[0]:
                 right_t1.warning(
                     "Data is empty. Select a different column to index data."
                 )
-
-            expander_data = right_t1.expander("Show all data to be used")
-            expander_data.write(st.session_state.df_filtered)
+            
             # show st.session_state.df_filtered with the index column blue
+            expander_data = right_t1.expander("Show all data to be used")
+            update_df(st.session_state.ignore_cols)
+            expander_data.write(st.session_state.df_filtered)
 
             expander_map = right_t1.expander("Column mapping")
             expander_map.write(st.session_state.col_mapping)
-
             st.session_state.tab1_done = True
 
 
