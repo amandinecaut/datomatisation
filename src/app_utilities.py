@@ -459,29 +459,25 @@ def display_cluster_color(cluster_name, color, size=40):
     """
     st.markdown(square_html, unsafe_allow_html=True)
 
-
 def create_QandA(text: str | None):
-    FA_component_dict = st.session_state.FA_component_dict
-    component_labels = [details["label"] for _, details in FA_component_dict.items()]
-
-    # Combine introduction text if provided
-    if text:
-        text = f"{text}\n" + "\n".join(component_labels)
-        intro_instruction = "You have an introduction of an article about a subject and"
-    else:
-        text = [details["label"] for _, details in FA_component_dict.items()]
-
-        intro_instruction = ""
-
-    # Build message
+    """
+    Creates a dictionary of question and answer pairs based on component analysis 
+    and optional additional text.
+    """
+    
+    # --- Generate Q&A for the component analysis ---
+    component_text = [
+        details["label"] for details in st.session_state.FA_component_dict.values()
+    ]
+    
     msgs = {
         "system_instruction": "You are a data analyst and scientist",
         "history": [
             {
                 "role": "user",
                 "parts": (
-                    f"Deduce question and answer pairs. "
-                    f"{intro_instruction} you have a list of each component deduced from factor analysis. "
+                    "Deduce question and answer pairs. "
+                    "You have a list of each component deduced from factor analysis. "
                     "The questions should be about each component, and the answers should explain them. "
                     "The question and answer are deduce from the factor analysis"
                     "Make a dataframe with two columns: one column is 'User' for the question, one column is 'Assistant. for the answers"
@@ -489,38 +485,54 @@ def create_QandA(text: str | None):
                 ),
             }
         ],
-        "content": {"role": "user", "parts": text},
+        "content": {"role": "user", "parts": component_text},
     }
-
-    # Get and clean Q&A
+    
     QandA = get_generate(msgs)
+    QandA = clean_QandA(QandA)
+    
+    # --- Generate Q&A for additional information if provided ---
+    if text is not None:
+        msgs = {
+        "system_instruction": "You are a data analyst and scientist",
+        "history": [
+            {
+                "role": "user",
+                "parts": (
+                    "You have information about the data and more context "
+                    "Deduce question and answer pairs from this text. "
+                    "Make a dataframe with two columns: one column is 'User' for the question, one column is 'Assistant. for the answers"
+                    "Provide just the data dictionary from the code snippet, excluding imports and the DataFrame creation, without the rest of the Python script."
+                ),
+            }
+        ],
+        "content": {"role": "user", "parts":  text },
+    }
+        
+        QandA2 = get_generate(msgs)
+        QandA2 = clean_QandA(QandA2)
+        
+        # Concatenate the two dictionaries
+        QandA['User'].extend(QandA2['User'])
+        QandA['Assistant'].extend(QandA2['Assistant'])
+
+    return QandA
+
+def clean_QandA(QandA):
     QandA = (
         QandA.replace("data = ", "").replace("python", "").replace("```", "").strip()
     )
-    print(QandA)
+    
     if "=" in QandA:
         QandA = QandA.split("=", 1)[1].strip()
 
     match = re.search(r"\{.*\}", QandA, re.DOTALL)
     if match:
         QandA = match.group(0)
-
+        
     return ast.literal_eval(QandA)
 
 
-def get_generate1(msgs):
-
-    model = genai.GenerativeModel(
-        model_name="gemini-1.5-flash",
-        system_instruction=msgs["system_instruction"],
-        generation_config=GenerationConfig(max_output_tokens=1000),
-    )
-    chat = model.start_chat(history=msgs["history"])
-    response = chat.send_message(
-        content=msgs["content"],
-    )
-
-    return response.candidates[0].content.parts[0].text
 
 
 import toml

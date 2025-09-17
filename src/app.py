@@ -52,7 +52,7 @@ for key, value in default_values.items():
 
 
 # Add and app header
-st.title("Automated DatAnalyst Pipeline")
+st.title("ADA pipeline")
 
 tabs = st.tabs(["Load data", "Analysis tools", "Clustering", "View"])
 
@@ -95,6 +95,7 @@ with tabs[0]:
     right_t1.markdown("### Data information")
 
     if "df_full" not in st.session_state:
+        right_t1.markdown("Welcome to ADA: the Automatic Data Analyst pipeline")
         right_t1.markdown(":sparkles: Load data to view information :sparkles:")
         right_t1.markdown(
             "⚠️ The uploaded dataset must be a **numerical DataFrame** with only numeric columns."
@@ -285,15 +286,33 @@ with tabs[1]:
 
             
 
-        if FA_done is True: 
+        if FA_done is True:
+            right_t2.write(
+                """
+                 ADA will now generate Question–Answer pairs for clustering and visualisation. 
+                 You may also provide additional information (e.g., the abstract of a related paper) to improve the generated pairs.  
+                 *Note: Adding extra information is optional.*
+                """
+                )
+
+            #with right_t2:
+            #    # Two side-by-side buttons
+            #    col1, col2 = st.columns(2)
+
+            #    introduction_choice = None
+            #    if col1.button("Yes", key="intro_yes"):
+            #        introduction_choice = "Yes"
+            #    elif col2.button("No", key="intro_no"):
+            #        introduction_choice = "No"
+            
             activate = ["Yes", "No"]
-            introduction_choice = left_t2.radio(
-                "Do you want an introduction?", activate, key="intro_choice"
+            introduction_choice = right_t2.radio(
+                "Do you want to add more informations?", activate, key="intro_choice"
             )
 
             # Show text area only if "Yes" is selected
             text = (
-                right_t2.text_area("Enter your introduction here:")
+                right_t2.text_area("Enter more information here here:")
                 if introduction_choice == "Yes"
                 else None
             )
@@ -302,7 +321,7 @@ with tabs[1]:
             generate_disabled = introduction_choice == "Yes" and (
                 not text or not text.strip()
             )
-
+            
             if right_t2.button("Generate Q&A", disabled=generate_disabled):
                 QandA = create_QandA(text)
 
