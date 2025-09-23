@@ -1,7 +1,7 @@
-# Datomatisation
+# ADA pipeline
 
-This document outlines the necessary configuration and setup for the
-**Datomatisation** application.
+This document outlines the necessary configuration and setup for
+**ADA**: the **A**utomatic **D**ata **A**nalysis pipeline.
 
 ------------------------------------------------------------------------
 
