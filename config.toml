@@ -1,7 +1,7 @@
 [theme]
-primaryColor="#7e34c7"
+primaryColor="#009940"
 backgroundColor="#f3f3f3"
-secondaryBackgroundColor="#b5b7f7"
+secondaryBackgroundColor="#002c1c"
 textColor="#000000"
 
 [runner]
@@ -9,4 +9,3 @@ fastReruns = true
 
 [client]
 showSidebarNavigation = false
-
