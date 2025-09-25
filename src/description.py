@@ -10,7 +10,7 @@ import openai
 import json
 import toml
 import re
-
+import os
 
 
 
@@ -19,16 +19,15 @@ import re
 class Description(ABC):
     describe_base = "data/describe"
 
-    #@property
-    #@abstractmethod
+    @property
+    @abstractmethod
     #def gpt_examples_path(self) -> str:
     #    """
     #    Path to excel files containing examples of user and assistant messages for the GPT to learn from.
     #    """
 
 
-    @property
-    @abstractmethod
+
     def describe_paths(self) -> Union[str, List[str]]:
         """
         List of paths to excel files containing questions and answers for the GPT to learn from.
@@ -96,6 +95,7 @@ class Description(ABC):
         List of dicts with keys "role" and "content".
 
         """
+       
 
         # Handle list and str paths arg
         if isinstance(paths, str):
@@ -103,10 +103,21 @@ class Description(ABC):
         elif len(paths) == 0:
             return []
 
-        # Concatenate dfs read from paths
-        df = pd.read_excel(paths[0])
-        for path in paths[1:]:
-            df = pd.concat([df, pd.read_excel(path)])
+        _, ext = os.path.splitext(paths[0])
+        ext = ext.lower()
+
+        if ext == ".csv":
+            df = pd.read_csv(paths[0])
+            for path in paths[1:]:
+                df = pd.concat([df, pd.read_csv(path)])
+
+        elif ext in [".xls", ".xlsx"]:
+            df = pd.read_excel(paths[0])
+            for path in paths[1:]:
+                df = pd.concat([df, pd.read_excel(path)])
+        else:
+            raise ValueError(f"Unsupported file extension: {ext}")
+
 
         if df.empty:
             return []
@@ -115,10 +126,10 @@ class Description(ABC):
         messages = []
         for i, row in df.iterrows():
             if i == 0:
-                messages.append({"role": "user", "content": row["user"]})
+                messages.append({"role": "user", "content": row["User"]})
             else:
-                messages.append({"role": "user", "content": row["user"]})
-            messages.append({"role": "assistant", "content": row["assistant"]})
+                messages.append({"role": "user", "content": row["User"]})
+            messages.append({"role": "assistant", "content": row["Assistant"]})
 
         return messages
 
@@ -138,15 +149,6 @@ class Description(ABC):
             message for message in messages if isinstance(message["content"], str)
         ]
 
-        #try:
-        #    messages += self.get_messages_from_excel(
-        #        paths=self.gpt_examples_path,
-        #    )
-        #except (
-        #    FileNotFoundError
-        #) as e:  # FIXME: When merging with new_training, add the other exception
-        #    print(e)
-        
 
 
         messages += [
@@ -195,7 +197,7 @@ class Description(ABC):
     
         msgs = self.convert_messages_format(self.messages)
        
-        answer = self.get_generate(msgs, 150)
+        answer = self.MH.get_generate(msgs, 150)
        
 
         return answer
@@ -203,18 +205,20 @@ class Description(ABC):
     
 
 class CreateDescription(Description):
-    #output_token_limit = 150
 
-    #@property
-    #def gpt_examples_path(self):
-    #    return f"{self.gpt_examples_base}/Forward.xlsx"
 
     @property
     def describe_paths(self):
-        return [f"{self.describe_base}/QandA_data.xlsx"]
+        return [f"{self.describe_base}/QandA_data.csv"]
 
 
     def __init__(self):
+        if "FA_df" not in st.session_state:
+            st.session_state["FA_df"] = pd.DataFrame()  
+        if "FA_component_dict" not in st.session_state:
+            st.session_state["FA_component_dict"] = {}
+
+
         self.FA_df = st.session_state.FA_df
         self.FA_component_dict = st.session_state.FA_component_dict
 
@@ -224,6 +228,7 @@ class CreateDescription(Description):
             self.indice = st.session_state.df_filtered.index.tolist().index(
                 st.session_state.selected_entity
             )
+        self.MH = ModelHandler()
         super().__init__()
 
     def get_intro_messages(self) -> List[Dict[str, str]]:
@@ -282,15 +287,18 @@ class CreateDescription(Description):
 
         text = ''
         for i in st.session_state.FA_component_dict.keys():
+            
             component = st.session_state.FA_component_dict.get(i, {})
+            
             if not component:  # Skip if component is missing
                 continue
             
             text_left, text_right = self.split_qualities(component['label'])
-
+            
             text += 'The entity '
         
             value = self.FA_df[i].values[0]
+           
         
             if not np.isnan(value):
                 if value >= 0:
@@ -304,15 +312,10 @@ class CreateDescription(Description):
                 elif value < -1:
                     text += 'In particular, the entity says that ' + component["bottom"][0] + '. '
             
-            
-            #cluster_num = int( self.FA_df['Cluster'].values[0])
-            #list_cluster_name = st.session_state.list_cluster_name[cluster_num]
-            #list_description_cluster = st.session_state.list_description_cluster[cluster_num]
-            #text += 'The entity is in the cluster ' + str(list_cluster_name) + '. '
-            #text += 'The description is ' + str(list_description_cluster)
+        
         return text
         
-    ### TO DO : a file for the cluster description/file for the individual.
+
     def synthesize_text(self):
 
         description = self.get_description(self.indice)
@@ -368,13 +371,15 @@ class CreateDescription(Description):
                 "parts": (
                     "You label a cluster."
                     "The label has to be short and clear."
+                    "The label should not have connotation negative."
+                    "The label has to be different from previous labels."
                     "Output a label only."
                     ),
                 },
                 ],
             "content": {"role": "user", "parts": text},
             }
-        text_generate = self.get_generate(msgs, max_output_token = 5)
+        text_generate = self.MH.get_generate(msgs, max_output_token = 5)
         return text_generate #.candidates[0].content.parts[0].text
     
     def get_cluster_description(self, text):
@@ -391,10 +396,14 @@ class CreateDescription(Description):
                 ],
             "content": {"role": "user", "parts": text},
             }
-        text_generate = self.get_generate(msgs,max_output_token = 500)
+        text_generate = self.MH.get_generate(msgs,max_output_token = 500)
         
         return text_generate 
 
+
+class ModelHandler:
+    def __init__(self, config_path=".streamlit/secrets.toml"):
+        self._config = toml.load(config_path)
 
     def get_model(self):
         """
@@ -474,8 +483,6 @@ class CreateDescription(Description):
                 else:
                     raise  # Re-raise other errors
 
-
-
     def transform_msgs_for_azure(self, msgs):
         """
         Transform custom message structure into a list of messages compatible
@@ -515,5 +522,3 @@ class CreateDescription(Description):
             azure_messages.append({"role": role, "content": content})
 
         return azure_messages
-
-

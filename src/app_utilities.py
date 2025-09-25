@@ -5,6 +5,8 @@ from visualisation_utilities import (
     ClusterVisualisation,
     ClusterVisualisation3D,
 )
+from description import ModelHandler, CreateDescription
+
 from clustering import Cluster
 from sklearn.decomposition import FactorAnalysis
 from sklearn.preprocessing import StandardScaler
@@ -27,6 +29,7 @@ DEFAULT_MAX_COMPONENTS = 14
 DEFAULT_NUM_CLUSTERS = 5
 
 default_values = {
+    "FA_df": pd.DataFrame(), 
     "u_labels": np.array([]),
     "centroids": None,
     "ind_col_map": None,
@@ -36,7 +39,6 @@ default_values = {
     "list_description_cluster": None,
     "fig_base": go.Figure(),
     "entity_col": "Index",
-    "FA_df": pd.DataFrame(),
     "tab1_done": False,
     "tab2_done": False,
     "tab3_done": False,
@@ -45,11 +47,14 @@ default_values = {
 }
 
 
+
+
+### ---- Load data tab utilities ---- ###
+
 def set_default_data():
     clear_session_state(skip=["file", "map"])
     load_data("./data/data-final-sample.csv")
     load_map("./data/map.xlsx")
-
 
 def clear_session_state(skip=[]):
     for key in st.session_state.keys():
@@ -61,11 +66,9 @@ def clear_session_state(skip=[]):
             if key not in skip:
                 st.session_state[key] = value
 
-
 def load_new_data():
     clear_session_state(skip=["file", "map"])
     load_data()
-
 
 def detect_delimiter(first_line):
     # Common delimiters to try
@@ -83,7 +86,6 @@ def detect_delimiter(first_line):
             best_delimiter = delimiter
 
     return best_delimiter
-
 
 def load_data(file=None):
 
@@ -110,7 +112,6 @@ def load_data(file=None):
     update_df()
 
     st.session_state.data_loading = False
-
 
 def update_df(ignore_cols=[]):
     df = st.session_state.df_full.copy()
@@ -146,7 +147,6 @@ def update_df(ignore_cols=[]):
     if "num_clusters" in st.session_state:
         del st.session_state["num_clusters"]
 
-
 def load_map(file=None):
 
     if file is None:
@@ -177,22 +177,6 @@ def load_map(file=None):
 
     st.session_state.col_mapping = map
     
-
-
-def load_map1(file=None):
-
-    if file is None:
-        file = st.session_state.map
-
-    if isinstance(file, str):
-        with open(file, "r") as f:
-            map = json.load(f)
-    else:
-        map = json.load(st.session_state.map)
-
-    st.session_state.col_mapping = map
-
-
 def get_defaults():
     return (
         DEFAULT_CUM_EXP,
@@ -202,6 +186,9 @@ def get_defaults():
     )
 
 
+### ----  Analysis tab utilities ---- ###
+
+# Factor Analysis utilities
 def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
 
     if st.session_state.features != []:
@@ -292,7 +279,6 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
 
         st.session_state.FA_component_dict = FA_component_dict
         st.session_state.FA_df = principalDf
-        print("st.session_state.FA_df", st.session_state.FA_df)
 
         vis = Visualisation(
             st.session_state.FA_df,
@@ -305,28 +291,8 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
         st.session_state.FA_component_dict = {}
         st.session_state.FA_df = None
 
-
-def perform_clustering(num_clusters=DEFAULT_NUM_CLUSTERS):
-    if "num_clusters" in st.session_state:
-        num_clusters = st.session_state.num_clusters
-    else:
-        num_clusters = DEFAULT_NUM_CLUSTERS
-
-    cluster = Cluster(
-        st.session_state.FA_df,
-        {k: v["label"] for k, v in st.session_state.FA_component_dict.items()},
-        num_clusters,
-    )
-    (
-        st.session_state.u_labels,
-        st.session_state.centroids,
-        st.session_state.ind_col_map,
-    ) = (cluster.u_labels, cluster.centroids, cluster.ind_col_map)
-    st.session_state.FA_df = cluster.FA_df
-
-
 def get_component_labels(text):
-
+    MH = ModelHandler()
     msgs = {
         "system_instruction": "You are a data analyst and scientist",
         "history": [
@@ -336,6 +302,7 @@ def get_component_labels(text):
                     "Make a label from the following texts that come from factor analysis."
                     "The label must strictly follow the format: 'bottom features vs top features'. "
                     "The label should be of the form x vs y, where x is one or more adjectives that describes an entity that has the bottom features and y is one or more adjectives that describes an entity that has the top features."
+                    "The label should not have connotation negative."
                     "Output a label only."
                 ),
             },
@@ -344,10 +311,9 @@ def get_component_labels(text):
         "content": {"role": "user", "parts": text},
     }
 
-    text_generate = get_generate(msgs)
+    text_generate = MH.get_generate(msgs, max_output_token = 10)
 
     return text_generate
-
 
 def display_results(component):
     results_dict = st.session_state.FA_component_dict
@@ -388,31 +354,36 @@ def display_results(component):
             )
 
 
-def add_to_fig():
-    # print("updating fig")
+### ---- Clustering tab utilities ---- ###
 
-    # find the index of the selected entity from st.session_state.df_filtered
-    ind = st.session_state.df_filtered.index.tolist().index(
-        st.session_state.selected_entity
+# Cluster utilities
+def perform_clustering(num_clusters=DEFAULT_NUM_CLUSTERS):
+    if "num_clusters" in st.session_state:
+        num_clusters = st.session_state.num_clusters
+    else:
+        num_clusters = DEFAULT_NUM_CLUSTERS
+    
+    # Reinitialise session state for cluster on rerun
+    for key in ["u_labels", "centroids", "ind_col_map", 
+            "list_cluster_name", "list_description_cluster"]:
+        st.session_state.pop(key, None)
+   
+    if "Cluster" in st.session_state.FA_df.columns:
+        st.session_state.FA_df.drop(columns=["Cluster"], inplace=True)
+
+    cluster = Cluster(
+        st.session_state.FA_df,
+        {k: v["label"] for k, v in st.session_state.FA_component_dict.items()},
+        num_clusters,
     )
+    (
+        st.session_state.u_labels,
+        st.session_state.centroids,
+        st.session_state.ind_col_map,
+    ) = (cluster.u_labels, cluster.centroids, cluster.ind_col_map)
+    st.session_state.FA_df = cluster.FA_df
 
-    df = st.session_state.df_z_scores.iloc[ind, :].to_frame().T
-
-    color = st.get_option("theme.primaryColor")
-    if color is None:
-        color = "#FF4B4B"
-
-    for col in df.columns.tolist():
-        st.session_state.fig_base.update_traces(
-            selector={"name": f"{col} selected"}, x=df[col]
-        )
-
-    if "fig" in st.session_state:
-        del st.session_state["fig"]
-
-    # st.session_state.fig = fig
-
-
+# Cluster visualisation utilities
 def update_fig_cluster():
 
     if "fig_cluster" in st.session_state:
@@ -427,7 +398,6 @@ def update_fig_cluster():
     )
     st.session_state.fig_cluster = vis_cluster.fig
 
-
 def update_fig_cluster3d():
     if "fig_cluster3d" in st.session_state:
         del st.session_state["fig_cluster3d"]
@@ -440,7 +410,6 @@ def update_fig_cluster3d():
         st.session_state.ind_col_map,
     )
     st.session_state.fig_cluster3d = vis_cluster.fig
-
 
 def display_cluster_color(cluster_name, color, size=40):
     square_html = f"""
@@ -459,27 +428,31 @@ def display_cluster_color(cluster_name, color, size=40):
     """
     st.markdown(square_html, unsafe_allow_html=True)
 
+# Q&A utility
 def create_QandA(text: str | None):
     """
     Creates a dictionary of question and answer pairs based on component analysis 
     and optional additional text.
     """
-    
+    MH = ModelHandler()
+    desc = CreateDescription()
     # --- Generate Q&A for the component analysis ---
     component_text = [
-        details["label"] for details in st.session_state.FA_component_dict.values()
-    ]
-    
+        part 
+        for details in st.session_state.FA_component_dict.values() 
+        for part in desc.split_qualities(details["label"])
+        ]
+           
     msgs = {
-        "system_instruction": "You are a data analyst and scientist",
+        "system_instruction": "You are a data analyst",
         "history": [
             {
                 "role": "user",
                 "parts": (
-                    "Deduce question and answer pairs. "
-                    "You have a list of each component deduced from factor analysis. "
-                    "The questions should be about each component, and the answers should explain them. "
+                    "You have a list of each component deduced from factor analysis."
+                    "Deduce question and answer pairs, such that: the questions should be about each component, and the answers should explain them. "
                     "The question and answer are deduce from the factor analysis"
+                    "The questions should be simple and the answers should be easy to understand."
                     "Make a dataframe with two columns: one column is 'User' for the question, one column is 'Assistant. for the answers"
                     "Provide just the data dictionary from the code snippet, excluding imports and the DataFrame creation, without the rest of the Python script."
                 ),
@@ -488,7 +461,7 @@ def create_QandA(text: str | None):
         "content": {"role": "user", "parts": component_text},
     }
     
-    QandA = get_generate(msgs)
+    QandA = MH.get_generate(msgs, max_output_token = 200)
     QandA = clean_QandA(QandA)
     
     # --- Generate Q&A for additional information if provided ---
@@ -509,7 +482,7 @@ def create_QandA(text: str | None):
         "content": {"role": "user", "parts":  text },
     }
         
-        QandA2 = get_generate(msgs)
+        QandA2 = MH.get_generate(msgs, max_output_token = 200)
         QandA2 = clean_QandA(QandA2)
         
         # Concatenate the two dictionaries
@@ -533,137 +506,33 @@ def clean_QandA(QandA):
     return ast.literal_eval(QandA)
 
 
+### ---- View tab utilities ---- ###
 
+# View utilities
+def add_to_fig():
+    # print("updating fig")
 
-import toml
+    # find the index of the selected entity from st.session_state.df_filtered
+    ind = st.session_state.df_filtered.index.tolist().index(
+        st.session_state.selected_entity
+    )
 
-_config = toml.load(".streamlit/secrets.toml")
+    df = st.session_state.df_z_scores.iloc[ind, :].to_frame().T
 
+    color = st.get_option("theme.primaryColor")
+    if color is None:
+        color = "#FF4B4B"
 
-def get_model():
-    """
-    Returns a list of model tuples (model_object, service_name) in order of preference.
-    """
-    models = []
-
-    # Try to initialize Gemini model
-    if _config["settings"].get("USE_GEMINI", True):
-        try:
-            config = _config["services"]["gemini"]
-            genai.configure(api_key=config["GEMINI_API_KEY"])
-            model = genai.GenerativeModel(
-                model_name=config["GEMINI_CHAT_MODEL"],
-                generation_config=genai.GenerationConfig(max_output_tokens=1000),
-            )
-            models.append((model, "gemini"))
-        except Exception as e:
-            print(f"Failed to initialize Gemini model: {e}")
-
-    # Try to initialize GPT model
-    try:
-        config = _config["services"]["gpt"]
-        model = "gpt-4o-mini"
-
-        models.append((model, "gpt"))
-    except Exception as e:
-        print(f"Failed to initialize GPT model: {e}")
-
-    return models
-
-
-def get_generate(msgs):
-    """
-    Attempts to use the primary model, and falls back to the next available model
-    in case of a 429 quota error.
-    """
-    available_models = get_model()
-
-    if not available_models:
-        raise RuntimeError(
-            "No models could be initialized. Please check your configuration."
+    for col in df.columns.tolist():
+        st.session_state.fig_base.update_traces(
+            selector={"name": f"{col} selected"}, x=df[col]
         )
 
-    for model, service_name in available_models:
-        try:
-            print(f"Attempting to use {service_name.capitalize()} model...")
-            # This is where you would make the actual API call
-            if service_name == "gemini":
-                chat = model.start_chat(history=msgs["history"])
-                response = chat.send_message(
-                    content=msgs["content"],
-                )
-                response = response.candidates[0].content.parts[0].text
-            elif service_name == "gpt":
+    if "fig" in st.session_state:
+        del st.session_state["fig"]
 
-                config = _config["services"]["gpt"]
-                openai.api_key = config.get("GPT_KEY")
-                openai.api_base = config.get("GPT_BASE")
-                openai.api_type = "azure"
-                openai.api_version = config.get("GPT_VERSION")
-
-                msgs = transform_msgs_for_azure(msgs)
-
-                # deployment_id must match your Azure deployment name
-                response_obj = openai.ChatCompletion.create(
-                    deployment_id=model,
-                    messages=msgs,
-                    temperature=1,
-                )
-
-                print(response_obj)
-                response = response_obj.choices[0].message["content"].strip()
-
-                print(response)
-
-            return response
-
-        except Exception as e:
-            error_str = str(e)
-            if "ResourceExhausted" in error_str or "429" in error_str:
-                print(
-                    f"{service_name.capitalize()} quota exceeded (429). Trying fallback..."
-                )
-                continue  # Try the next model in the list
-            else:
-                raise  # Re-raise other errors
-
-
-def transform_msgs_for_azure(msgs):
-    """
-    Transform custom message structure into a list of messages compatible
-    with Azure OpenAI ChatCompletion API.
-    """
-    valid_roles = {"system", "assistant", "user", "function", "tool", "developer"}
-    azure_messages = []
-
-    # Add system instruction as first message if present
-    system_instruction = msgs.get("system_instruction")
-    if system_instruction:
-        azure_messages.append({"role": "system", "content": str(system_instruction)})
-
-    # Process history
-    for msg in msgs.get("history", []):
-        role = msg.get("role")
-        if role not in valid_roles:
-            continue  # skip invalid roles
-        parts = msg.get("parts")
-        if isinstance(parts, (list, tuple)):
-            content = " ".join(parts)
-        else:
-            content = str(parts)
-        azure_messages.append({"role": role, "content": content})
-
-    # Add current content
-    content_msg = msgs.get("content")
-    if content_msg:
-        role = content_msg.get("role", "user")
-        if role not in valid_roles:
-            role = "user"
-        parts = content_msg.get("parts")
-        if isinstance(parts, (list, tuple)):
-            content = " ".join(parts)
-        else:
-            content = str(parts)
-        azure_messages.append({"role": role, "content": content})
-
-    return azure_messages
+# Chat utility
+def create_chat(to_hash, chat_class,*args, **kwargs):
+    chat_hash_state = hash(to_hash)
+    chat = chat_class(chat_hash_state, *args, **kwargs)
+    return chat

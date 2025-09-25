@@ -78,14 +78,6 @@ class Visual:
             # self.annotation_text = "<span style=''>{metric_name}: {data:.0f}/66</span>"  # TODO: this text will not automatically update!
             self.annotation_text = "<span style=''>{metric_name}: {data:.2f}</span>"
 
-    def show(self):
-        st.plotly_chart(
-            self.fig,
-            config={"displayModeBar": False},
-            height=500,
-            use_container_width=True,
-        )
-
     def _setup_styles(self):
         side_margin = 60
         top_margin = 75

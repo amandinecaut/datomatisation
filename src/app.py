@@ -3,6 +3,8 @@ from visualisation_utilities import (
     ClusterVisualisation,
     ClusterVisualisation3D,
 )
+from chat import EntityChat
+from description import CreateDescription
 from clustering import Cluster
 from google.generativeai import GenerationConfig
 import google.generativeai as genai
@@ -12,27 +14,25 @@ import pandas as pd
 import numpy as np
 import json
 
-
 import app_utilities
-from app_utilities import (
-    perform_FA,
-    perform_clustering,
-    update_df,
-    load_new_data,
-    load_map,
-    display_results,
-    get_defaults,
-    set_default_data,
-    add_to_fig,
-    update_fig_cluster,
-    update_fig_cluster3d,
-    display_cluster_color,
-    create_QandA,
-)
+from app_utilities import *
 
-
-from chat import EntityChat
-from description import CreateDescription
+#from app_utilities import (
+#    perform_FA,
+#   perform_clustering,
+#    update_df,
+#   load_new_data,
+#    load_map,
+#    display_results,
+#    get_defaults,
+#    set_default_data,
+#    add_to_fig,
+#    update_fig_cluster,
+#    update_fig_cluster3d,
+#    display_cluster_color,
+#    create_QandA,
+#    create_chat
+#)
 
 
 st.set_page_config(layout="wide")
@@ -44,11 +44,13 @@ default_cum_exp, default_sum_threshold, default_max_components, default_num_clus
 
 height = 1500  # height of the container
 
-from app_utilities import default_values
+#from app_utilities import default_values
 
 for key, value in default_values.items():
     if key not in st.session_state:
         st.session_state[key] = value
+        print(f"Setting {key} to {value}")
+    
 
 
 # Add and app header
@@ -56,6 +58,7 @@ st.title("ADA pipeline")
 
 tabs = st.tabs(["Load data", "Analysis tools", "Clustering", "View"])
 
+FA_done = False
 
 # Load Data
 with tabs[0]:
@@ -286,7 +289,7 @@ with tabs[1]:
 
             
 
-        if FA_done is True:
+        if FA_done:
             right_t2.write(
                 """
                  ADA will now generate Question–Answer pairs for clustering and visualisation. 
@@ -295,16 +298,7 @@ with tabs[1]:
                 """
                 )
 
-            #with right_t2:
-            #    # Two side-by-side buttons
-            #    col1, col2 = st.columns(2)
-
-            #    introduction_choice = None
-            #    if col1.button("Yes", key="intro_yes"):
-            #        introduction_choice = "Yes"
-            #    elif col2.button("No", key="intro_no"):
-            #        introduction_choice = "No"
-            
+               
             activate = ["Yes", "No"]
             introduction_choice = right_t2.radio(
                 "Do you want to add more informations?", activate, key="intro_choice"
@@ -343,13 +337,15 @@ with tabs[1]:
                 st.session_state.tab2_done = True
             else:
                 st.error("Failed to generate Q&A. Please check your input.")
+        else:
+            st.error("You must complete the Factor Analysis first!")
 
 
 # Clustering
 with tabs[2]:
     if not st.session_state.get("tab2_done", False):
         st.warning("You must complete the factor analysis first!")
-        st.stop()
+        pass
 
     else:
         # Create left and right containers
@@ -553,6 +549,7 @@ with tabs[2]:
 with tabs[3]:
     if not st.session_state.get("tab3_done", False):
         st.warning("You must complete the clustering first!")
+        
     else:
         left_t4, right_t4 = st.columns([0.3, 0.7])
         left_t4 = left_t4.container(height=height, border=0)
@@ -581,8 +578,17 @@ with tabs[3]:
                 )
 
             st.write("Wordalisation")
-            chat = EntityChat()
+
+            # Chat state hash determines whether or not we should load a new chat or continue an old one
+            # We can add or remove variables to this hash to change conditions for loading a new chat
+            to_hash = (indice)
+            # Now create the chat object
+            chat = create_chat(to_hash, EntityChat)
+
+    
+            
             if chat.state == "empty":
+
                 chat.add_message(
                     "Please can you summarise the data for me?",
                     role="user",

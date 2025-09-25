@@ -10,7 +10,6 @@ import plotly
 
 import description
 from description import CreateDescription
-    
 class Cluster:
     def __init__(self, FA_df, FA_label_map, num_clusters):
         cols = [k for k in FA_label_map.keys()]

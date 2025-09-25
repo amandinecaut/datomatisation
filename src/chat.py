@@ -4,16 +4,22 @@ from itertools import groupby
 from types import GeneratorType
 import pandas as pd
 import json
-import google.generativeai as genai
-from description import *
-
-openai.api_type = "azure"
-
+from description import CreateDescription,ModelHandler
 
 class Chat:
+    def __init__(self, chat_state_hash, state="empty"):
 
-    def __init__(self, state="empty"):
+        if (
+            "chat_state_hash" not in st.session_state
+            or chat_state_hash != st.session_state.chat_state_hash
+        ):
+            
+            st.session_state.chat_state_hash = chat_state_hash
+            st.session_state.messages_to_display = []
+            st.session_state.chat_state = state
 
+        else:
+            pass
         if st.session_state.selected_entity == None:
             self.indice = 0
         else:
@@ -21,18 +27,10 @@ class Chat:
                 st.session_state.selected_entity
             )
 
-        st.session_state.chat_state = state
-        
-        if "messages_to_display" not in st.session_state:
-            st.session_state.messages_to_display = []
-            self.messages_to_display = st.session_state.messages_to_display
-        
-        else: 
-            pass
-        
+        # Set session states as attributes for easier access
         self.messages_to_display = st.session_state.messages_to_display
         self.state = st.session_state.chat_state
-
+        self.MH = ModelHandler()
 
     def instruction_messages(self):
         """
@@ -46,6 +44,8 @@ class Chat:
         """
         message = {"role": role, "content": content}
         self.messages_to_display.append(message)
+
+
 
     def handle_input(self, input):
         """
@@ -80,19 +80,7 @@ class Chat:
         # Show the messages in an expander
         st.expander("Chat transcript", expanded=False).write(messages)
 
-
-        converted_msgs = description.convert_messages_format(messages)
-
-        genai.configure(api_key=GEMINI_API_KEY)
-        model = genai.GenerativeModel(
-            model_name=GEMINI_CHAT_MODEL,
-            system_instruction=converted_msgs["system_instruction"],
-        )
-        chat = model.start_chat(history=converted_msgs["history"])
-        response = chat.send_message(content=converted_msgs["content"])
-
-        answer = response.text
-
+        answer = self.MH.get_generate(messages, max_output_token=500)
         message = {"role": "assistant", "content": answer}
 
         # Add the returned value to the messages.
@@ -137,17 +125,18 @@ class Chat:
             group = list(group)
 
             if key == "assistant":
-                #avatar = st.image('owl.jpg')
-                avatar = "👩‍🎤"
+                avatar = "data/ressources/img/logo_pink.png"
             else:
-                avatar = None
+                try:
+                    avatar = st.session_state.user_info["picture"]
+                except:
+                    avatar = None
 
             message = st.chat_message(name=key, avatar=avatar)
             with message:
                 for message in group:
                     content = message["content"]
                     self.display_content(content)
-    
 
     def save_state(self):
         """
@@ -156,8 +145,12 @@ class Chat:
         st.session_state.messages_to_display = self.messages_to_display
         st.session_state.chat_state = self.state
 
+
+
+
+
 class EntityChat(Chat):
-    def __init__(self, state="empty"):
+    def __init__(self, chat_state_hash,state="empty"):
         if st.session_state.selected_entity == None:
             self.indice = 0
         else:
@@ -165,7 +158,7 @@ class EntityChat(Chat):
                 st.session_state.selected_entity
             )
       
-        super().__init__(state=state)
+        super().__init__(chat_state_hash, state=state)
 
     def get_input(self):
         """
@@ -221,3 +214,8 @@ class EntityChat(Chat):
    
 
         return ret_val
+
+
+
+
+
