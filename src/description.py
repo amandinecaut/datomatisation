@@ -452,6 +452,7 @@ class ModelHandler:
                 # This is where you would make the actual API call
                 if service_name == "gemini":
                     config = genai.GenerationConfig(max_output_tokens=max_output_token)
+                    print(msgs["history"])
                     chat = model.start_chat(history=msgs["history"])
                     response = chat.send_message(content=msgs["content"],)
                     response = response.candidates[0].content.parts[0].text

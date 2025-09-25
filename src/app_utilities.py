@@ -364,9 +364,9 @@ def perform_clustering(num_clusters=DEFAULT_NUM_CLUSTERS):
         num_clusters = DEFAULT_NUM_CLUSTERS
     
     # Reinitialise session state for cluster on rerun
-    for key in ["u_labels", "centroids", "ind_col_map", 
-            "list_cluster_name", "list_description_cluster"]:
-        st.session_state.pop(key, None)
+    #for key in ["u_labels", "centroids", "ind_col_map", 
+    #        "list_cluster_name", "list_description_cluster"]:
+    #    st.session_state.pop(key, None)
    
     if "Cluster" in st.session_state.FA_df.columns:
         st.session_state.FA_df.drop(columns=["Cluster"], inplace=True)

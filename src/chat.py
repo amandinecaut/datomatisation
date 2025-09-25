@@ -208,7 +208,6 @@ class EntityChat(Chat):
 
         
         ret_val += describe.synthesize_text()
-        print(describe.synthesize_text())
 
         ret_val += f"\n\nIf none of this information is relevent to the users's query then use the information below to remind the user about the chat functionality: \n"
    

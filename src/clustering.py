@@ -57,7 +57,7 @@ class Cluster:
         
         for _ , details in st.session_state.FA_component_dict.items():
             liste_name_dim.append(details['label'])
-        print(liste_name_dim)
+        
         
         list_name_cluster = []
 
