@@ -330,7 +330,11 @@ with tabs[1]:
 
                 # Save Q&A as CSV
                 QandA_df = pd.DataFrame(QandA)
+                # Path to save the CSV
                 csv_path = "./data/describe/QandA_data.csv"
+                # Ensure the folder exists
+                os.makedirs(os.path.dirname(csv_path), exist_ok=True)
+                # Save the DataFrame as a CSV file
                 QandA_df.to_csv(csv_path, index=False)
 
                 st.success("Q&A generated and saved!")
