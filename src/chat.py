@@ -180,7 +180,7 @@ class EntityChat(Chat):
         Instruction for the agent.
         """
         first_messages = [
-            {"role": "system", "content": "You are a UK-based football scout."},
+            {"role": "system", "content": "You are a data analyst."},
             {
                 "role": "user",
                 "content": (

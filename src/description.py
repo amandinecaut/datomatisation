@@ -529,6 +529,7 @@ class ModelHandler:
             azure_messages.append({"role": role, "content": content})
 
         return azure_messages
+        
     def transform_msgs_for_gemini(self, msgs):
         """
         Transform custom message structure into a list of messages compatible
