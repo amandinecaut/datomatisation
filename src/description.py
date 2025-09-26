@@ -456,6 +456,7 @@ class ModelHandler:
                     sys_instr, hist, user_msg= self.transform_msgs_for_gemini(msgs)
                     chat = model.start_chat(history=hist)
                     response = chat.send_message(user_msg)
+
                     response = response.candidates[0].content.parts[0].text
                     
                 elif service_name == "gpt":
