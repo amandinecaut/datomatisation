@@ -29,7 +29,7 @@ DEFAULT_MAX_COMPONENTS = 14
 DEFAULT_NUM_CLUSTERS = 5
 
 default_values = {
-    "FA_df": pd.DataFrame(), 
+    "df": pd.DataFrame(), 
     "u_labels": np.array([]),
     "centroids": None,
     "ind_col_map": None,
@@ -278,10 +278,10 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
             }
 
         st.session_state.FA_component_dict = FA_component_dict
-        st.session_state.FA_df = principalDf
+        st.session_state.df = principalDf
 
         vis = Visualisation(
-            st.session_state.FA_df,
+            st.session_state.df,
             {k: v["label"] for k, v in st.session_state.FA_component_dict.items()},
         )
         st.session_state.fig_base = vis.fig
@@ -289,7 +289,7 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
 
     else:
         st.session_state.FA_component_dict = {}
-        st.session_state.FA_df = None
+        st.session_state.df = None
 
 def get_component_labels(text):
     MH = ModelHandler()
@@ -368,11 +368,11 @@ def perform_clustering(num_clusters=DEFAULT_NUM_CLUSTERS):
     #        "list_cluster_name", "list_description_cluster"]:
     #    st.session_state.pop(key, None)
    
-    if "Cluster" in st.session_state.FA_df.columns:
-        st.session_state.FA_df.drop(columns=["Cluster"], inplace=True)
+    if "Cluster" in st.session_state.df.columns:
+        st.session_state.df.drop(columns=["Cluster"], inplace=True)
 
     cluster = Cluster(
-        st.session_state.FA_df,
+        st.session_state.df,
         {k: v["label"] for k, v in st.session_state.FA_component_dict.items()},
         num_clusters,
     )
@@ -381,7 +381,7 @@ def perform_clustering(num_clusters=DEFAULT_NUM_CLUSTERS):
         st.session_state.centroids,
         st.session_state.ind_col_map,
     ) = (cluster.u_labels, cluster.centroids, cluster.ind_col_map)
-    st.session_state.FA_df = cluster.FA_df
+    st.session_state.df = cluster.df
 
 # Cluster visualisation utilities
 def update_fig_cluster():
@@ -390,7 +390,7 @@ def update_fig_cluster():
         del st.session_state["fig_cluster"]
 
     vis_cluster = ClusterVisualisation(
-        st.session_state.FA_df,
+        st.session_state.df,
         {k: v["label"] for k, v in st.session_state.FA_component_dict.items()},
         st.session_state.u_labels,
         st.session_state.centroids,
@@ -403,7 +403,7 @@ def update_fig_cluster3d():
         del st.session_state["fig_cluster3d"]
 
     vis_cluster = ClusterVisualisation3D(
-        st.session_state.FA_df,
+        st.session_state.df,
         {k: v["label"] for k, v in st.session_state.FA_component_dict.items()},
         st.session_state.u_labels,
         st.session_state.centroids,

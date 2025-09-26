@@ -11,10 +11,10 @@ import plotly
 import description
 from description import CreateDescription
 class Cluster:
-    def __init__(self, FA_df, FA_label_map, num_clusters):
+    def __init__(self, df, FA_label_map, num_clusters):
         cols = [k for k in FA_label_map.keys()]
-        self.FA_df = FA_df
-        self.df = FA_df.values
+        self.df = df
+        self.df_values = df.values
         self.FA_label_map = FA_label_map
         self.num_clusters = num_clusters
 
@@ -26,10 +26,10 @@ class Cluster:
         kmeans = KMeans(n_clusters=self.num_clusters, init='k-means++', max_iter=100, n_init=50, random_state=42)
         
         # Fit and predict cluster labels
-        labels = kmeans.fit_predict(self.FA_df)
+        labels = kmeans.fit_predict(self.df)
 
         
-        self.FA_df['Cluster'] = labels
+        self.df['Cluster'] = labels
 
         
         # Store centroids and unique labels
@@ -39,7 +39,7 @@ class Cluster:
         # Get the cluster (long) description
         self.list_description_cluster = self.description_cluster(self.centroids)
         
-        self.u_labels = self.FA_df['Cluster'].unique()
+        self.u_labels = self.df['Cluster'].unique()
 
 
         # Create cluster color map
@@ -47,7 +47,7 @@ class Cluster:
         self.ind_col_map = dict(sorted(self.ind_col_map.items()))
 
         st.session_state.u_labels, st.session_state.centroids, st.session_state.ind_col_map = self.u_labels , self.centroids,  self.ind_col_map
-        st.session_state.FA_df = self.FA_df
+        st.session_state.df = self.df
         st.session_state.list_cluster_name =  self.list_cluster_name
         st.session_state.list_description_cluster = self.list_description_cluster
  
@@ -115,7 +115,7 @@ class Cluster:
             cluster_pts_indices = np.where(kmeans.labels_ == iclust)[0]
 
 
-            cluster_pts = self.FA_df.iloc[cluster_pts_indices]
+            cluster_pts = self.df_values.iloc[cluster_pts_indices]
             cluster_cen = kmeans.cluster_centers_[iclust]
 
             # Efficient distance calculation

@@ -114,8 +114,8 @@ class Visualisation:
         )
 
 class ClusterVisualisation:
-    def __init__(self, FA_df, FA_label_map, u_labels, centroids, ind_col_map):
-        self.FA_df = FA_df
+    def __init__(self, df, FA_label_map, u_labels, centroids, ind_col_map):
+        self.df = df
         self.FA_label_map = FA_label_map
         self.u_labels = u_labels
         self.centroids = centroids  
@@ -129,7 +129,7 @@ class ClusterVisualisation:
         """Visualize K-Means clustering results using Plotly."""
 
         # Ensure required attributes are initialized
-        required_attributes = ['FA_df', 'centroids', 'u_labels', 'ind_col_map']
+        required_attributes = ['df', 'centroids', 'u_labels', 'ind_col_map']
         for attr in required_attributes:
             if attr not in st.session_state:
                 raise RuntimeError(f"Missing attribute: {attr}. Ensure clustering is run first.")
@@ -142,7 +142,7 @@ class ClusterVisualisation:
         inv_map = {st.session_state.FA_component_dict[k]["label"]: k for k in st.session_state.FA_component_dict.keys()}
         
         for i in st.session_state.u_labels:
-            cluster_points = st.session_state.FA_df[st.session_state.FA_df['Cluster'] == i]
+            cluster_points = st.session_state.df[st.session_state.df['Cluster'] == i]
             color=st.session_state.ind_col_map[i]
            
             self.fig.add_trace(
@@ -187,8 +187,8 @@ class ClusterVisualisation:
         )
 
 class ClusterVisualisation3D:
-    def __init__(self, FA_df, FA_label_map, u_labels, centroids, ind_col_map):
-        self.FA_df = FA_df
+    def __init__(self, df, FA_label_map, u_labels, centroids, ind_col_map):
+        self.df = df
         self.FA_label_map = FA_label_map
         self.u_labels = u_labels
         self.centroids = centroids  
@@ -202,7 +202,7 @@ class ClusterVisualisation3D:
         """Visualize K-Means clustering results using Plotly."""
 
         # Ensure required attributes are initialized
-        required_attributes = ['FA_df', 'centroids', 'u_labels', 'ind_col_map']
+        required_attributes = ['df', 'centroids', 'u_labels', 'ind_col_map']
         for attr in required_attributes:
             if attr not in st.session_state:
                 raise RuntimeError(f"Missing attribute: {attr}. Ensure clustering is run first.")
@@ -218,7 +218,7 @@ class ClusterVisualisation3D:
 
 
         for i in st.session_state.u_labels:
-            cluster_points = st.session_state.FA_df[st.session_state.FA_df['Cluster'] == i]
+            cluster_points = st.session_state.df[st.session_state.df['Cluster'] == i]
             color=st.session_state.ind_col_map[i]
             self.fig.add_trace(
                 go.Scatter3d(

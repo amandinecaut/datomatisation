@@ -17,23 +17,6 @@ import json
 import app_utilities
 from app_utilities import *
 
-#from app_utilities import (
-#    perform_FA,
-#   perform_clustering,
-#    update_df,
-#   load_new_data,
-#    load_map,
-#    display_results,
-#    get_defaults,
-#    set_default_data,
-#    add_to_fig,
-#    update_fig_cluster,
-#    update_fig_cluster3d,
-#    display_cluster_color,
-#    create_QandA,
-#    create_chat
-#)
-
 
 st.set_page_config(layout="wide")
 
@@ -43,8 +26,6 @@ default_cum_exp, default_sum_threshold, default_max_components, default_num_clus
 )
 
 height = 1500  # height of the container
-
-#from app_utilities import default_values
 
 for key, value in default_values.items():
     if key not in st.session_state:
@@ -274,7 +255,7 @@ with tabs[1]:
                 right_t2.write("## Factor Analysis results")
 
                 expander_FA = right_t2.expander("Factor Analysis results")
-                expander_FA.write(st.session_state.FA_df)
+                expander_FA.write(st.session_state.df)
                 FA_done = True
 
                 expander_exp = right_t2.expander("Factors components")
@@ -418,7 +399,7 @@ with tabs[2]:
                 )
 
                 vis_cluster = ClusterVisualisation(
-                    st.session_state.FA_df,
+                    st.session_state.df,
                     {
                         k: v["label"]
                         for k, v in st.session_state.FA_component_dict.items()
@@ -470,7 +451,7 @@ with tabs[2]:
                 )
 
                 vis_cluster = ClusterVisualisation3D(
-                    st.session_state.FA_df,
+                    st.session_state.df,
                     {
                         k: v["label"]
                         for k, v in st.session_state.FA_component_dict.items()
@@ -516,7 +497,7 @@ with tabs[2]:
 
             if left_t3.button("Run Visualisation"):
                 vis_cluster = ClusterVisualisation(
-                    st.session_state.FA_df,
+                    st.session_state.df,
                     {
                         k: v["label"]
                         for k, v in st.session_state.FA_component_dict.items()

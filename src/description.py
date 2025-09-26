@@ -211,13 +211,13 @@ class CreateDescription(Description):
 
 
     def __init__(self):
-        if "FA_df" not in st.session_state:
-            st.session_state["FA_df"] = pd.DataFrame()  
+        if "df" not in st.session_state:
+            st.session_state["df"] = pd.DataFrame()  
         if "FA_component_dict" not in st.session_state:
             st.session_state["FA_component_dict"] = {}
 
 
-        self.FA_df = st.session_state.FA_df
+        self.df = st.session_state.df
         self.FA_component_dict = st.session_state.FA_component_dict
 
         if st.session_state.selected_entity == None:
@@ -280,8 +280,8 @@ class CreateDescription(Description):
         return words[-1]
 
     def get_description(self, indice):
-        self.FA_df = st.session_state.FA_df.apply(zscore, nan_policy="omit")
-        self.FA_df = self.FA_df.iloc[indice, :].to_frame().T
+        self.df = st.session_state.df.apply(zscore, nan_policy="omit")
+        self.df = self.df.iloc[indice, :].to_frame().T
 
         text = ''
         for i in st.session_state.FA_component_dict.keys():
@@ -295,7 +295,7 @@ class CreateDescription(Description):
             
             text += 'The entity '
         
-            value = self.FA_df[i].values[0]
+            value = self.df[i].values[0]
            
         
             if not np.isnan(value):
