@@ -549,12 +549,11 @@ with tabs[3]:
             index=0,
             on_change=add_to_fig,
         )
-
-        right_t4.plotly_chart(
-            st.session_state.fig_base, use_container_width=True, theme="streamlit"
-        )
+        
 
         with right_t4:
+            st.markdown("# Visualisation") 
+            st.plotly_chart(st.session_state.fig_base, use_container_width=True, theme="streamlit")
             if st.session_state.selected_entity == None:
                 indice = 0
             else:
@@ -562,7 +561,7 @@ with tabs[3]:
                     st.session_state.selected_entity
                 )
 
-            st.write("Wordalisation")
+            st.markdown("# Wordalisation")   
 
             # Chat state hash determines whether or not we should load a new chat or continue an old one
             # We can add or remove variables to this hash to change conditions for loading a new chat
