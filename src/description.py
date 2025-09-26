@@ -449,12 +449,14 @@ class ModelHandler:
             try:
                 print(f"Attempting to use {service_name.capitalize()} model...")
                 
+                
                 # This is where you would make the actual API call
                 if service_name == "gemini":
                     config = genai.GenerationConfig(max_output_tokens=max_output_token)
-                    print(msgs["history"])
-                    chat = model.start_chat(history=msgs["history"])
-                    response = chat.send_message(content=msgs["content"],)
+                    sys_instr, hist, user_msg= self.transform_msgs_for_gemini(msgs)
+                    chat = model.start_chat(history=hist)
+                    response = chat.send_message(user_msg)
+
                     response = response.candidates[0].content.parts[0].text
                     
                 elif service_name == "gpt":
@@ -492,6 +494,10 @@ class ModelHandler:
         valid_roles = {"system", "assistant", "user", "function", "tool", "developer"}
         azure_messages = []
 
+        # --- If it's already a list of Azure-style messages, just return it ---
+        if isinstance(msgs, list):
+            return msgs
+
         # Add system instruction as first message if present
         system_instruction = msgs.get("system_instruction")
         if system_instruction:
@@ -523,3 +529,50 @@ class ModelHandler:
             azure_messages.append({"role": role, "content": content})
 
         return azure_messages
+    def transform_msgs_for_gemini(self, msgs):
+        """
+        Transform custom message structure into a list of messages compatible
+        with Gemini API.
+        """
+        # If msgs is already a list of GPT-like messages,
+        #    convert *that* to Gemini format.
+        if isinstance(msgs, list):
+            system_instruction = None
+            gemini_history = []
+            for m in msgs:
+                role = m.get("role")
+                if role == "system":
+                    system_instruction = m.get("content")
+                elif role == "assistant":
+                    gemini_history.append({"role": "model", "parts": [m.get("content", "")]})
+                elif role == "user":
+                    gemini_history.append({"role": "user", "parts": [m.get("content", "")]})
+            # last user message is the new query
+            user_message = None
+            if gemini_history and gemini_history[-1]["role"] == "user":
+                user_message = gemini_history[-1]["parts"][0]
+            return system_instruction, gemini_history, user_message
+        
+        # Otherwise assume it's the custom dict shape
+        elif isinstance(msgs, dict):
+            system_instruction = msgs.get("system_instruction")
+            gemini_history = []
+            for msg in msgs.get("history", []):
+                role = msg.get("role")
+                if role == "assistant":
+                    role = "model"
+                elif role not in ("user", "model"):
+                    continue
+                parts = msg.get("parts")
+                text = " ".join(parts) if isinstance(parts, (list, tuple)) else str(parts)
+                gemini_history.append({"role": role, "parts": [text]})
+            user_msg_obj = msgs.get("content")
+            if user_msg_obj:
+                parts = user_msg_obj.get("parts")
+                user_message = " ".join(parts) if isinstance(parts, (list, tuple)) else str(parts)
+            else:
+                user_message = None
+            return system_instruction, gemini_history, user_message
+
+        else:
+            raise TypeError(f"Unexpected msgs type: {type(msgs)}")
