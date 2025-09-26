@@ -34,7 +34,7 @@ USE_GEMINI = true
 
 [services.gemini]
 GEMINI_API_KEY = "your key here"
-GEMINI_CHAT_MODEL = "gemini-1.5-flash"
+GEMINI_CHAT_MODEL = "gemini-2.5-flash"
 GEMINI_EMBEDDING_MODEL = "models/text-embedding-004"
 
 [services.gpt]

@@ -606,16 +606,12 @@ with tabs[3]:
                 chat.state = "default"
             chat.get_input()
             chat.display_messages()
+            
             chat.save_state()
 
         st.session_state.tab4_done = True
 
-        # indice = st.session_state.df_filtered.index.tolist().index(st.session_state.selected_entity_tab5)
 
-        # st.write("# Entity description")
-        # clust = entity_description_cluster()
-
-        # st.write(clust)
 
 
 # debug

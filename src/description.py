@@ -67,8 +67,8 @@ class Description(ABC):
                 "content": (
                     "You are a data analysis bot. "
                     "You provide succinct and to the point explanations about data using data. "
-                    "You use the information given to you from the data and answers "
-                    "Use earlier user/assistant pairs to give summaries of the data"
+                    "You use the information given to you from the data and answers. "
+                    "Use earlier user/assistant pairs to give summaries of the data."
                 ),
             },
         ]
@@ -191,9 +191,7 @@ class Description(ABC):
         Yields:
             str
         """
-
         st.expander("Chat transcript", expanded=False).write(self.messages)
-
     
         msgs = self.convert_messages_format(self.messages)
        
@@ -364,7 +362,7 @@ class CreateDescription(Description):
     def get_cluster_label(self, text):
 
         msgs = {
-            "system_instruction": "You are a data analyst and scientist",
+            "system_instruction": "You are a data analyst.",
             "history": [
                 {
                 "role": "user",
@@ -385,7 +383,7 @@ class CreateDescription(Description):
     def get_cluster_description(self, text):
 
         msgs = {
-            "system_instruction": "You are a data analyst and scientist",
+            "system_instruction": "You are a data analyst.",
             "history": [
                 {
                 "role": "user",
@@ -529,7 +527,98 @@ class ModelHandler:
             azure_messages.append({"role": role, "content": content})
 
         return azure_messages
+
+    def transform_msgs_for_gemini2(self, msgs):
+        """
+        Transform custom message structure into a tuple:
+        (system_instruction, history_messages, user_message)
+        where history_messages and user_message are compatible with Gemini API.
+
+        Handles two input formats:
+        1. list: A list of GPT-style message dicts ({'role': 'user'/'assistant'/'system', 'content': '...'}).
+        2. dict: A custom dict shape (e.g., {'system_instruction': '...', 'history': [...], 'content': '...'}).
+        """
+        system_instruction = None
+        gemini_history = []
+        user_message = None
+
+        # If msgs is a list of GPT-like messages
+        if isinstance(msgs, list):
+            # 1. First, process all messages to extract system instruction and build the history
+            # Note: The *last* message in this list is assumed to be the new user query.
+            for m in msgs:
+                role = m.get("role")
+                content = m.get("content", "")
+
+                if role == "system":
+                 # System instructions are typically handled separately
+                    system_instruction = content
+                elif role == "assistant":
+                    # Maps 'assistant' to 'model' for Gemini
+                    gemini_history.append({"role": "model", "parts": [{"text": content}]})
+                elif role == "user":
+                    # User messages go into history *if* they are not the last message
+                    gemini_history.append({"role": "user", "parts": [{"text": content}]})
+                # Ignore any other roles
         
+            # 2. Extract the last user message as the new query and *remove* it from history
+            if gemini_history and gemini_history[-1]["role"] == "user":
+                # The user message content is the text part of the last message
+                last_parts = gemini_history[-1]["parts"]
+                if last_parts and isinstance(last_parts[0], dict) and "text" in last_parts[0]:
+                    user_message = last_parts[0]["text"]
+            
+                # The fix: Remove the last user message from the history list
+                gemini_history.pop()
+
+        # Otherwise assume it's the custom dict shape
+        elif isinstance(msgs, dict):
+            system_instruction = msgs.get("system_instruction")
+
+            # Process history messages from the 'history' key
+            for msg in msgs.get("history", []):
+                role = msg.get("role")
+            
+                # Ensure proper Gemini role naming
+                if role == "assistant":
+                    role = "model"
+                elif role not in ("user", "model"):
+                    continue # Skip non-user/model/assistant roles
+            
+                parts = msg.get("parts")
+                # The custom dict shape assumes 'parts' can be a list of strings or a single string/object
+                # A more robust fix would handle multimodal parts, but based on your original
+                # implementation, we'll join/stringify parts into a single text.
+                if parts is None:
+                    text = ""
+                elif isinstance(parts, (list, tuple)):
+                    text = " ".join(str(p) for p in parts)
+                else:
+                    text = str(parts)
+
+                # A message part in Gemini is an object, typically {"text": "..."}
+                gemini_history.append({"role": role, "parts": [{"text": text}]})
+
+            # Process the final user message from the 'content' key
+            user_msg_obj = msgs.get("content")
+            if user_msg_obj:
+                parts = user_msg_obj.get("parts")
+                if parts is None:
+                    user_message = None
+                elif isinstance(parts, (list, tuple)):
+                    user_message = " ".join(str(p) for p in parts)
+                else:
+                    user_message = str(parts)
+        # user_message will be None if user_msg_obj is None or if parts is None/empty
+
+        else:
+        # Handle unexpected type
+            raise TypeError(f"Unexpected msgs type: {type(msgs)}. Expected list or dict.")
+        
+    
+        return system_instruction, gemini_history, user_message
+
+
     def transform_msgs_for_gemini(self, msgs):
         """
         Transform custom message structure into a list of messages compatible

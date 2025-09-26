@@ -77,9 +77,6 @@ class Chat:
             message for message in messages if isinstance(message["content"], str)
         ]
 
-        # Show the messages in an expander
-        st.expander("Chat transcript", expanded=False).write(messages)
-
         answer = self.MH.get_generate(messages, max_output_token=500)
         message = {"role": "assistant", "content": answer}
 
@@ -118,8 +115,6 @@ class Chat:
         Special case: If there are N Visuals in one message, followed by N messages/StreamingMessages in the next, they are paired up into the same N columns.
         """
         # Group by role so user name and avatar is only displayed once
-
-        # st.write(self.messages_to_display)
 
         for key, group in groupby(self.messages_to_display, lambda x: x["role"]):
             group = list(group)
@@ -180,7 +175,7 @@ class EntityChat(Chat):
         Instruction for the agent.
         """
         first_messages = [
-            {"role": "system", "content": "You are a data analyst."},
+            {"role": "system", "content": "You are a pirate data analyst and you speak like a pirate."},
             {
                 "role": "user",
                 "content": (
