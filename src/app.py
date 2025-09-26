@@ -606,7 +606,6 @@ with tabs[3]:
                 chat.state = "default"
             chat.get_input()
             chat.display_messages()
-            
             chat.save_state()
 
         st.session_state.tab4_done = True
