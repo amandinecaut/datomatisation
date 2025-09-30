@@ -44,6 +44,7 @@ default_values = {
     "tab3_done": False,
     "tab4_done": False,
     "data_loading": False,
+    "indice": 0,
 }
 
 
@@ -53,7 +54,7 @@ default_values = {
 
 def set_default_data():
     clear_session_state(skip=["file", "map"])
-    load_data("./data/data-final-sample.csv")
+    load_data("./data/data-sample.csv")
     load_map("./data/map.xlsx")
 
 def clear_session_state(skip=[]):
@@ -513,9 +514,7 @@ def add_to_fig():
     # print("updating fig")
 
     # find the index of the selected entity from st.session_state.df_filtered
-    ind = st.session_state.df_filtered.index.tolist().index(
-        st.session_state.selected_entity
-    )
+    ind = st.session_state.indice
 
     df = st.session_state.df_z_scores.iloc[ind, :].to_frame().T
 

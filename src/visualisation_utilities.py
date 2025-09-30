@@ -143,14 +143,14 @@ class ClusterVisualisation:
         
         for i in st.session_state.u_labels:
             cluster_points = st.session_state.df[st.session_state.df['Cluster'] == i]
-            color=st.session_state.ind_col_map[i]
+            #color=st.session_state.ind_col_map[i]
            
             self.fig.add_trace(
                 go.Scatter(
                 x=cluster_points.loc[:, inv_map[dim_x]],
                 y=cluster_points.loc[:, inv_map[dim_y]],
                 mode='markers',
-                marker=dict(color=st.session_state.ind_col_map[i], size = 2, opacity=0.15),
+                marker=dict(color=st.session_state.ind_col_map[i], size = 5, opacity=0.3),
                 #name=f'Cluster {i}'
                 name = self.list_cluster_name[i]
                 )
@@ -163,7 +163,7 @@ class ClusterVisualisation:
             x=st.session_state.centroids[:, int(inv_map[dim_x].split()[-1])],
             y=st.session_state.centroids[:, int(inv_map[dim_y].split()[-1])],
             mode='markers',
-            marker=dict(color='black', size=2, symbol='x'),
+            marker=dict(color='black', size=6, symbol='x'),
             name='Centroids'
         ))
 
@@ -219,14 +219,14 @@ class ClusterVisualisation3D:
 
         for i in st.session_state.u_labels:
             cluster_points = st.session_state.df[st.session_state.df['Cluster'] == i]
-            color=st.session_state.ind_col_map[i]
+            #color=st.session_state.ind_col_map[i]
             self.fig.add_trace(
                 go.Scatter3d(
                 x=cluster_points.loc[:, inv_map[dim_x]],
                 y=cluster_points.loc[:, inv_map[dim_y]],
                 z=cluster_points.loc[:, inv_map[dim_z]],
                 mode='markers',
-                marker=dict(color=st.session_state.ind_col_map[i], size = 2, opacity=0.15),
+                marker=dict(color=st.session_state.ind_col_map[i], size = 5, opacity=0.3),
                 name = self.list_cluster_name[i]
                 )
             )
@@ -238,7 +238,7 @@ class ClusterVisualisation3D:
             y=st.session_state.centroids[:, int(inv_map[dim_y].split()[-1])],
             z=st.session_state.centroids[:, int(inv_map[dim_z].split()[-1])],   
             mode='markers',
-            marker=dict(color='black', size=2, symbol='x'),
+            marker=dict(color='black', size=6, symbol='x'),
             name='Centroids'
         ))
 

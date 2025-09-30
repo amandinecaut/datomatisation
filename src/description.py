@@ -220,12 +220,8 @@ class CreateDescription(Description):
         self.df = st.session_state.df
         self.FA_component_dict = st.session_state.FA_component_dict
 
-        if st.session_state.selected_entity == None:
-            self.indice = 0
-        else:
-            self.indice = st.session_state.df_filtered.index.tolist().index(
-                st.session_state.selected_entity
-            )
+        self.indice = st.session_state.indice
+        
         self.MH = ModelHandler()
         super().__init__()
 

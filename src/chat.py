@@ -20,12 +20,8 @@ class Chat:
 
         else:
             pass
-        if st.session_state.selected_entity == None:
-            self.indice = 0
-        else:
-            self.indice = st.session_state.df_filtered.index.tolist().index(
-                st.session_state.selected_entity
-            )
+
+        self.indice = st.session_state.indice
 
         # Set session states as attributes for easier access
         self.messages_to_display = st.session_state.messages_to_display
@@ -146,12 +142,7 @@ class Chat:
 
 class EntityChat(Chat):
     def __init__(self, chat_state_hash,state="empty"):
-        if st.session_state.selected_entity == None:
-            self.indice = 0
-        else:
-            self.indice = st.session_state.df_filtered.index.tolist().index(
-                st.session_state.selected_entity
-            )
+        self.indice = st.session_state.indice
       
         super().__init__(chat_state_hash, state=state)
 
@@ -160,7 +151,7 @@ class EntityChat(Chat):
         Get input from streamlit."""
 
         if x := st.chat_input(
-            placeholder=f"What else would you like to know about the entity {self.indice}?"
+            placeholder=f"What else would you like to know about {st.session_state.selected_entity}?"
         ):
             if len(x) > 500:
                 st.error(

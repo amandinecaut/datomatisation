@@ -30,7 +30,6 @@ height = 1500  # height of the container
 for key, value in default_values.items():
     if key not in st.session_state:
         st.session_state[key] = value
-        print(f"Setting {key} to {value}")
     
 
 
@@ -149,6 +148,8 @@ with tabs[0]:
                 key="ignore_cols",
             )
 
+
+
             # display warning if there are rows with NaN
             if (
                 st.session_state.df_full[st.session_state.features]
@@ -195,6 +196,31 @@ with tabs[0]:
             expander_map = right_t1.expander("Column mapping")
             expander_map.write(st.session_state.col_mapping)
             st.session_state.tab1_done = True
+
+
+            entity_name_radio = right_t1.radio(
+            "Does your dataset contain a column for entity names?",
+            options=["Yes", "No"],
+            index=1,  # default to "No"
+            key="entity_radio",
+            )
+
+            if entity_name_radio == "No":
+                st.session_state["col_name"] = None
+            else:
+                if st.session_state.ignore_cols:
+                    selected_from_ignore = right_t1.selectbox(
+                        "Pick the column to use for entity names",
+                        st.session_state.ignore_cols,
+                        key="selected_from_ignore",
+                    )
+
+                    # store it in session_state
+                    st.session_state["col_name"] = selected_from_ignore
+                    expander_col_name = right_t1.expander("Show the column used for the entity names")
+                    expander_col_name.write(st.session_state.df_full[[selected_from_ignore]])
+
+                
 
 
 # "Analysis Tools"
@@ -537,29 +563,43 @@ with tabs[3]:
         
     else:
         left_t4, right_t4 = st.columns([0.3, 0.7])
-        left_t4 = left_t4.container(height=height, border=0)
-        right_t4 = right_t4.container(height=height, border=3)
+        #left_t4 = left_t4.container(height=height, border=0)
+        #right_t4 = right_t4.container(height=height, border=3)
         left_t4.markdown("### Select entity")
+
+        col_name = st.session_state.get("col_name")
+
+        if col_name is None:
+            option_name = st.session_state.df_filtered.index.to_list()
+            option_labels = [f"Entity №{i}" for i, _ in enumerate(option_name)]
+            label_to_value = dict(zip(option_labels, option_name))
+        else: 
+            option_name = st.session_state.df_filtered.index.to_list()
+            option_labels = st.session_state.df_full.loc[option_name,selected_from_ignore].tolist()
+            label_to_value = dict(zip(option_labels, option_name))
+     
+            
 
         # drop down with entity column, default to first column
         entity = left_t4.selectbox(
             label="Select entity",
-            options=(st.session_state.df_filtered.index.to_list()),
+            options=(option_labels),
             key="selected_entity",
             index=0,
             on_change=add_to_fig,
         )
-        
+
 
         with right_t4:
             st.markdown("# Visualisation") 
             st.plotly_chart(st.session_state.fig_base, use_container_width=True, theme="streamlit")
             if st.session_state.selected_entity == None:
                 indice = 0
+                st.session_state['indice'] = indice
             else:
-                indice = st.session_state.df_filtered.index.tolist().index(
-                    st.session_state.selected_entity
-                )
+                indice = label_to_value[st.session_state.selected_entity]
+                st.session_state['indice'] = indice
+                
 
             st.markdown("# Wordalisation")   
 
@@ -589,7 +629,8 @@ with tabs[3]:
             chat.save_state()
 
         st.session_state.tab4_done = True
-
+       
+     
 
 
 
