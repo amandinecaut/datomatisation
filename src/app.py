@@ -2,6 +2,7 @@ from visualisation_utilities import (
     Visualisation,
     ClusterVisualisation,
     ClusterVisualisation3D,
+    DistributionPlot,
 )
 from chat import EntityChat
 from description import CreateDescription
@@ -287,6 +288,10 @@ with tabs[1]:
                 expander_exp = right_t2.expander("Factors components")
                 expander_exp.write(st.session_state.components)
 
+             
+
+                
+
         if st.session_state.analysis == "LR":
             right_t2.markdown("---")
             right_t2.write("## Logistic Regression results")
@@ -563,27 +568,23 @@ with tabs[3]:
         
     else:
         left_t4, right_t4 = st.columns([0.3, 0.7])
-        #left_t4 = left_t4.container(height=height, border=0)
-        #right_t4 = right_t4.container(height=height, border=3)
         left_t4.markdown("### Select entity")
 
         col_name = st.session_state.get("col_name")
+        option_name = st.session_state.df_filtered.index.to_list()
 
         if col_name is None:
-            option_name = st.session_state.df_filtered.index.to_list()
             option_labels = [f"Entity №{i}" for i, _ in enumerate(option_name)]
-            label_to_value = dict(zip(option_labels, option_name))
         else: 
-            option_name = st.session_state.df_filtered.index.to_list()
-            option_labels = st.session_state.df_full.loc[option_name,selected_from_ignore].tolist()
-            label_to_value = dict(zip(option_labels, option_name))
+            option_labels = (st.session_state.df_full.loc[option_name,selected_from_ignore].tolist())
+        label_to_value = dict(zip(option_labels, option_name))
      
             
 
         # drop down with entity column, default to first column
         entity = left_t4.selectbox(
             label="Select entity",
-            options=(option_labels),
+            options=option_labels,
             key="selected_entity",
             index=0,
             on_change=add_to_fig,
@@ -593,13 +594,14 @@ with tabs[3]:
         with right_t4:
             st.markdown("# Visualisation") 
             st.plotly_chart(st.session_state.fig_base, use_container_width=True, theme="streamlit")
+
             if st.session_state.selected_entity == None:
                 indice = 0
-                st.session_state['indice'] = indice
             else:
                 indice = label_to_value[st.session_state.selected_entity]
-                st.session_state['indice'] = indice
+            st.session_state['indice'] = indice
                 
+      
 
             st.markdown("# Wordalisation")   
 

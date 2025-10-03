@@ -4,6 +4,7 @@ from visualisation_utilities import (
     rgb_to_color,
     ClusterVisualisation,
     ClusterVisualisation3D,
+    DistributionPlot
 )
 from description import ModelHandler, CreateDescription
 
@@ -281,7 +282,11 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
         st.session_state.FA_component_dict = FA_component_dict
         st.session_state.df = principalDf
 
-        vis = Visualisation(
+        #vis = Visualisation(
+        #    st.session_state.df,
+        #    {k: v["label"] for k, v in st.session_state.FA_component_dict.items()},
+        #)
+        vis = DistributionPlot(
             st.session_state.df,
             {k: v["label"] for k, v in st.session_state.FA_component_dict.items()},
         )
@@ -511,13 +516,10 @@ def clean_QandA(QandA):
 
 # View utilities
 def add_to_fig():
-    # print("updating fig")
 
-    # find the index of the selected entity from st.session_state.df_filtered
     ind = st.session_state.indice
-
     df = st.session_state.df_z_scores.iloc[ind, :].to_frame().T
-
+    
     color = st.get_option("theme.primaryColor")
     if color is None:
         color = "#FF4B4B"
