@@ -46,6 +46,7 @@ default_values = {
     "tab4_done": False,
     "data_loading": False,
     "indice": 0,
+    "selected_entity" : None,
 }
 
 
@@ -441,12 +442,12 @@ def create_QandA(text: str | None):
     and optional additional text.
     """
     MH = ModelHandler()
-    desc = CreateDescription()
+    
     # --- Generate Q&A for the component analysis ---
     component_text = [
         part 
         for details in st.session_state.FA_component_dict.values() 
-        for part in desc.split_qualities(details["label"])
+        for part in CreateDescription.split_qualities(details["label"])
         ]
            
     msgs = {

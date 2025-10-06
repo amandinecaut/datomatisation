@@ -34,7 +34,7 @@ class Description(ABC):
         """
 
     def __init__(self):
-        self.synthesized_text = self.synthesize_text()
+        #self.synthesized_text = self.synthesize_text()
         self.messages = self.setup_messages()
         self._config = toml.load(".streamlit/secrets.toml")
 
@@ -148,15 +148,11 @@ class Description(ABC):
         messages = [
             message for message in messages if isinstance(message["content"], str)
         ]
+ 
+        
 
 
-
-        messages += [
-            {
-                "role": "user",
-                "content": f"Now do the same thing with the following: ```{self.synthesized_text}```",
-            }
-        ]
+        
         return messages
 
     def convert_messages_format(self, messages):
@@ -191,6 +187,14 @@ class Description(ABC):
         Yields:
             str
         """
+        self.messages += [
+            {
+                "role": "user",
+                "content": f"Now do the same thing with the following: ```{self.synthesized_text}```",
+            }
+        ]
+        
+
         st.expander("Chat transcript", expanded=False).write(self.messages)
     
         msgs = self.convert_messages_format(self.messages)
@@ -223,6 +227,7 @@ class CreateDescription(Description):
         self.indice = st.session_state.indice
         
         self.MH = ModelHandler()
+
         super().__init__()
 
     def get_intro_messages(self) -> List[Dict[str, str]]:
@@ -238,8 +243,7 @@ class CreateDescription(Description):
                 "content": (
                     "You are a data analyst. "
                     "You provide succinct and to the point explanations about the data.  "
-                    "You use the information given to you from the data and answers"
-                    "to earlier user/assistant pairs to give a description"
+                    "You use the information given to you from the data and answers to earlier user/assistant pairs to give a description."
                 ),
             }
         ]
@@ -253,7 +257,7 @@ class CreateDescription(Description):
             "is very low on ", 
             "is quite low on ", 
             "is relatively on ", 
-            "is quite high on",  
+            "is quite high on ",  
             "is very high on ", 
             "is extremely high on "
             ]
@@ -277,6 +281,10 @@ class CreateDescription(Description):
 
     def get_description(self, indice):
         self.df = st.session_state.df.apply(zscore, nan_policy="omit")
+        #print('INDICE IN GET DESCRIPTION')
+        #print(indice)
+        #print('DF' )
+        #print(self.df)
         self.df = self.df.iloc[indice, :].to_frame().T
 
         text = ''
@@ -287,9 +295,9 @@ class CreateDescription(Description):
             if not component:  # Skip if component is missing
                 continue
             
-            text_left, text_right = self.split_qualities(component['label'])
+            text_left, text_right = CreateDescription.split_qualities(component['label'])
             
-            text += 'The entity '
+            text += f"{st.session_state.selected_entity} "
         
             value = self.df[i].values[0]
            
@@ -302,9 +310,9 @@ class CreateDescription(Description):
 
 
                 if value > 1:
-                    text += 'In particular, the entity says that ' + component["top"][0] + '. '
+                    text += f"In particular, {st.session_state.selected_entity} says that " + component["top"][0] + ". "
                 elif value < -1:
-                    text += 'In particular, the entity says that ' + component["bottom"][0] + '. '
+                    text += f"In particular, {st.session_state.selected_entity} says that " + component["bottom"][0] + ". "
             
         
         return text
@@ -313,6 +321,7 @@ class CreateDescription(Description):
     def synthesize_text(self):
 
         description = self.get_description(self.indice)
+        self.synthesized_text = description
 
         return description
 
@@ -342,8 +351,9 @@ class CreateDescription(Description):
         " extremely high on "  
         ]
         return self.describe(thresholds, words, value)
-       
-    def split_qualities(self, text):
+
+    @staticmethod   
+    def split_qualities(text):
         # Use a regular expression to split on " vs " (case-insensitive)
         parts = re.split(r"\s+vs\.?\s+", text, flags=re.IGNORECASE)
 
@@ -662,3 +672,5 @@ class ModelHandler:
 
         else:
             raise TypeError(f"Unexpected msgs type: {type(msgs)}")
+    
+    

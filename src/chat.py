@@ -103,13 +103,7 @@ class Chat:
                     )
 
     def display_messages(self):
-        """
-        Displays visible messages in streamlit. Messages are grouped by role.
-        If message content is a Visual, it is displayed in a st.columns((1, 2, 1))[1].
-        If the message is a list of strings/Visuals of length n, they are displayed in n columns.
-        If a message is a generator, it is displayed with st.write_stream
-        Special case: If there are N Visuals in one message, followed by N messages/StreamingMessages in the next, they are paired up into the same N columns.
-        """
+
         # Group by role so user name and avatar is only displayed once
 
         for key, group in groupby(self.messages_to_display, lambda x: x["role"]):
@@ -143,12 +137,14 @@ class Chat:
 class EntityChat(Chat):
     def __init__(self, chat_state_hash,state="empty"):
         self.indice = st.session_state.indice
+        
       
         super().__init__(chat_state_hash, state=state)
 
     def get_input(self):
         """
-        Get input from streamlit."""
+        Get input from streamlit.
+        """
 
         if x := st.chat_input(
             placeholder=f"What else would you like to know about {st.session_state.selected_entity}?"
@@ -166,16 +162,16 @@ class EntityChat(Chat):
         Instruction for the agent.
         """
         first_messages = [
-            {"role": "system", "content": "You are a pirate data analyst and you speak like a pirate."},
+            {"role": "system", "content": "You are a data analyst."},
             {
                 "role": "user",
                 "content": (
                     "After these messages you will be interacting with a user of the data analysis platform. "
-                    f"The user has selected the entity {self.indice}, and the conversation will be about them. "
+                    f"The user has selected {st.session_state.selected_entity}, and the conversation will be about them. "
                     "You will receive relevant information to answer a user's questions and then be asked to provide a response. "
                     "All user messages will be prefixed with 'User:' and enclosed with ```. "
                     "When responding to the user, speak directly to them. "
-                    "Use the information provided before the query  to provide 2 sentence answers."
+                    "Use the information provided before the query to provide your answers."
                     " Do not deviate from this information or provide additional information that is not in the text returned by the functions."
                 ),
             },
@@ -188,14 +184,14 @@ class EntityChat(Chat):
         if query == "":
             query = self.visible_messages[-1]["content"]
 
-        ret_val = "Here is a description of the entity in terms of data: \n\n"
+        ret_val = f"Here is a description of {st.session_state.selected_entity} in terms of data: \n\n"
         describe =  CreateDescription()
         summary = describe.stream_gpt(self.indice)
 
         
         ret_val += describe.synthesize_text()
 
-        ret_val += f"\n\nIf none of this information is relevent to the users's query then use the information below to remind the user about the chat functionality: \n"
+        ret_val += f"\n\nIf none of this information is relevant to the users's query then use the information below to remind the user about the chat functionality: \n"
    
 
         return ret_val

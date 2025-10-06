@@ -140,19 +140,38 @@ class ClusterVisualisation:
     def set_visualization_cluster(self):
         """Visualize K-Means clustering results using Plotly."""
 
+        u_labels = getattr(st.session_state, "u_labels", np.array([]))
+        centroids = getattr(st.session_state, "centroids", None)
+        ind_col_map = getattr(st.session_state, "ind_col_map", None)
+        FA_component_dict = getattr(st.session_state, "FA_component_dict", {})
+        list_cluster_name = getattr(st.session_state, "list_cluster_name", None)
+        dim_x = getattr(st.session_state, "dim_x", None)
+        dim_y = getattr(st.session_state, "dim_y", None)
+
+        # Check if required data is available
+        if u_labels.size == 0 or ind_col_map is None:
+            st.warning("Clustering not yet run. Please run clustering first.")
+            return
+        if centroids is None:
+            st.info("Centroids not yet available. Only plotting cluster points.")
+        if not dim_x or not dim_y:
+            st.warning("Select dimensions (dim_x and dim_y) before plotting.")
+            return
+
         # Ensure required attributes are initialized
-        required_attributes = ['df', 'centroids', 'u_labels', 'ind_col_map']
-        for attr in required_attributes:
-            if attr not in st.session_state:
-                raise RuntimeError(f"Missing attribute: {attr}. Ensure clustering is run first.")
+        #required_attributes = ['df', 'centroids', 'u_labels', 'ind_col_map']
+        #for attr in required_attributes:
+        #    if attr not in st.session_state:
+        #        raise RuntimeError(f"Missing attribute: {attr}. Ensure clustering is run first.")
 
 
         
-        dim_x = st.session_state["dim_x"]
-        dim_y = st.session_state["dim_y"]
+        #dim_x = st.session_state["dim_x"]
+        #dim_y = st.session_state["dim_y"]
 
         inv_map = {st.session_state.FA_component_dict[k]["label"]: k for k in st.session_state.FA_component_dict.keys()}
-        
+
+
         for i in st.session_state.u_labels:
             cluster_points = st.session_state.df[st.session_state.df['Cluster'] == i]
             #color=st.session_state.ind_col_map[i]
@@ -178,13 +197,6 @@ class ClusterVisualisation:
             marker=dict(color='black', size=6, symbol='x'),
             name='Centroids'
         ))
-
-        #text = [f'Cluster {i}' for i in range(num_clusters)]
-    
-        #legend_list = []
-        #for key in ind_col_map.keys():
-        #    legend_list.append(mpatches.Patch(color=ind_col_map[key],label=f'$Cluster {key}$'))
-        #    first_legend=ax.legend(title='Cluster',bbox_to_anchor=(1.02, 1),handles=legend_list, loc='upper left', borderaxespad=0)
         
         # Update layout
     
@@ -250,18 +262,10 @@ class ClusterVisualisation3D:
             y=st.session_state.centroids[:, int(inv_map[dim_y].split()[-1])],
             z=st.session_state.centroids[:, int(inv_map[dim_z].split()[-1])],   
             mode='markers',
-            marker=dict(color='black', size=6, symbol='x'),
+            marker=dict(color='black', size=4, symbol='x'),
             name='Centroids'
         ))
 
-        #text = [f'Cluster {i}' for i in range(num_clusters)]
-    
-        #legend_list = []
-        #for key in ind_col_map.keys():
-        #    legend_list.append(mpatches.Patch(color=ind_col_map[key],label=f'$Cluster {key}$'))
-        #    first_legend=ax.legend(title='Cluster',bbox_to_anchor=(1.02, 1),handles=legend_list, loc='upper left', borderaxespad=0)
-        
-        
         # Update layout
         self.fig.update_layout(
             title='K-Means Clustering 3D Visualization',

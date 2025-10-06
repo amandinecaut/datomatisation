@@ -115,7 +115,7 @@ with tabs[0]:
             st.info("Loading data, please wait...")
         else:
             expander_sample = right_t1.expander("Sample of the data")
-            expander_sample.write(st.session_state.df_full.sample(5))
+            expander_sample.write(st.session_state.df_full)#.sample(5))
 
             cols = ["Index"] + st.session_state.df_full.columns.to_list()
             # drop down "select entity", default to "Index"
@@ -395,115 +395,9 @@ with tabs[2]:
             right_t3.write(
                 "Perform Factor Analysis with at least 2 components to view clustering results"
             )
+        elif len(factors) == 2:
+            left_t3.write("Only 2 factors available, showing 2D plot")
 
-        elif len(factors) >= 3:
-            ## HERE FOR 3D PLOT. THE USER CAN PICK 2D or 3D PLOT
-
-            plot_type = ["2D", "3D"]
-            plot_choice = left_t3.radio(
-                "Select plot type", plot_type, key="plot_choice"
-            )
-
-            if plot_choice == "2D":
-
-                # First dimension selection
-                dimension_x = left_t3.selectbox(
-                    "Select a factor for X-axis:",
-                    factors,
-                    key="dim_x",
-                    on_change=update_fig_cluster,
-                )
-                st.session_state.dimension_x = dimension_x
-
-                # Second dimension selection (excluding first)
-                available_for_y = [f for f in factors if f != dimension_x]
-                dimension_y = left_t3.selectbox(
-                    "Select a factor for Y-axis:",
-                    available_for_y,
-                    key="dim_y",
-                    on_change=update_fig_cluster,
-                )
-                st.session_state.dimension_y = dimension_y
-
-                left_t3.write(
-                    f"You selected **{dimension_x}** for the X-axis and **{dimension_y}** for the Y-axis."
-                )
-
-                vis_cluster = ClusterVisualisation(
-                    st.session_state.df,
-                    {
-                        k: v["label"]
-                        for k, v in st.session_state.FA_component_dict.items()
-                    },
-                    st.session_state.u_labels,
-                    st.session_state.centroids,
-                    st.session_state.ind_col_map,
-                )
-                st.session_state.fig_cluster = vis_cluster.fig
-
-                right_t3.plotly_chart(
-                    st.session_state.fig_cluster,
-                    use_container_width=True,
-                    theme="streamlit",
-                )
-                st.session_state.tab3_done = True
-
-            else:
-                # First dimension selection
-                dimension_x = left_t3.selectbox(
-                    "Select a factor for X-axis:",
-                    factors,
-                    key="dim_x",
-                    on_change=update_fig_cluster3d,
-                )
-                st.session_state.dimension_x = dimension_x
-
-                # Second dimension selection (excluding first)
-                available_for_y = [f for f in factors if f != dimension_x]
-                dimension_y = left_t3.selectbox(
-                    "Select a factor for Y-axis:",
-                    available_for_y,
-                    key="dim_y",
-                    on_change=update_fig_cluster3d,
-                )
-                st.session_state.dimension_y = dimension_y
-
-                # Third dimension selection (excluding first and second)
-                dimension_z = left_t3.selectbox(
-                    "Select a factor for Z-axis:",
-                    [f for f in factors if f not in [dimension_x, dimension_y]],
-                    key="dim_z",
-                    on_change=update_fig_cluster3d,
-                )
-                st.session_state.dimension_z = dimension_z
-
-                left_t3.write(
-                    f"You selected **{dimension_x}** for the X-axis, **{dimension_y}** for the Y-axis, and **{dimension_z}** for the Z-axis."
-                )
-
-                vis_cluster = ClusterVisualisation3D(
-                    st.session_state.df,
-                    {
-                        k: v["label"]
-                        for k, v in st.session_state.FA_component_dict.items()
-                    },
-                    st.session_state.u_labels,
-                    st.session_state.centroids,
-                    st.session_state.ind_col_map,
-                )
-                st.session_state.fig_cluster3d = vis_cluster.fig
-
-                right_t3.plotly_chart(
-                    st.session_state.fig_cluster3d,
-                    use_container_width=True,
-                    theme="streamlit",
-                )
-                st.session_state.tab3_done = True
-
-        else:
-            ### HERE FOR 2D PLOT ONLY WHEN THERE IS ONLY 2 FACTORS
-
-            # First dimension selection
             dimension_x = left_t3.selectbox(
                 "Select a factor for X-axis:",
                 factors,
@@ -512,50 +406,105 @@ with tabs[2]:
             )
             st.session_state.dimension_x = dimension_x
 
-            # Second dimension selection (excluding first)
-            available_for_y = [f for f in factors if f != dimension_x]
+
             dimension_y = left_t3.selectbox(
                 "Select a factor for Y-axis:",
-                available_for_y,
+                [f for f in factors if f != dimension_x],
                 key="dim_y",
                 on_change=update_fig_cluster,
             )
             st.session_state.dimension_y = dimension_y
 
-            left_t3.write(
-                f"You selected **{dimension_x}** for the X-axis and **{dimension_y}** for the Y-axis."
-            )
+            left_t3.write(f"You selected **{dimension_x}** for X-axis and **{dimension_y}** for Y-axis.")
 
-            if left_t3.button("Run Visualisation"):
+            # Create cluster visualization
+            vis_cluster = ClusterVisualisation(
+                st.session_state.df,
+                {k: v["label"] for k, v in st.session_state.FA_component_dict.items()},
+                st.session_state.u_labels,
+                st.session_state.centroids,
+                st.session_state.ind_col_map,
+            )
+            st.session_state.fig_cluster = vis_cluster.fig
+            fig_cluster = st.session_state.get("fig_cluster")
+            if fig_cluster is not None and fig_cluster.data:
+                right_t3.plotly_chart(fig_cluster, use_container_width=True, theme="streamlit")
+
+            st.session_state.tab3_done = True 
+        else:
+            
+            plot_type = ["2D", "3D"]
+            plot_choice = left_t3.radio("Select plot type", plot_type, key="plot_choice")
+           
+            # Common dimension selection
+            dimension_x = left_t3.selectbox(
+                "Select a factor for X-axis:",
+                factors,
+                key="dim_x",
+                on_change=update_fig_cluster if plot_choice == "2D" else update_fig_cluster3d,
+            )
+            st.session_state.dimension_x = dimension_x
+
+            available_for_y = [f for f in factors if f != dimension_x]
+            dimension_y = left_t3.selectbox(
+                "Select a factor for Y-axis:",
+                available_for_y,
+                key="dim_y",
+                on_change=update_fig_cluster if plot_choice == "2D" else update_fig_cluster3d,
+            )
+            st.session_state.dimension_y = dimension_y
+
+            left_t3.write(f"You selected **{dimension_x}** for X-axis and **{dimension_y}** for Y-axis.")
+
+            # 3D specific selection
+            if plot_choice == "3D":
+                dimension_z = left_t3.selectbox(
+                    "Select a factor for Z-axis:",
+                    [f for f in factors if f not in [dimension_x, dimension_y]],
+                    key="dim_z",
+                    on_change=update_fig_cluster3d,
+                )
+                st.session_state.dimension_z = dimension_z
+                left_t3.write(
+                    f"You selected **{dimension_x}** for X-axis, **{dimension_y}** for Y-axis, and **{dimension_z}** for Z-axis."
+                )
+
+            # Create cluster visualization
+            if plot_choice == "2D":
                 vis_cluster = ClusterVisualisation(
                     st.session_state.df,
-                    {
-                        k: v["label"]
-                        for k, v in st.session_state.FA_component_dict.items()
-                    },
+                    {k: v["label"] for k, v in st.session_state.FA_component_dict.items()},
                     st.session_state.u_labels,
                     st.session_state.centroids,
                     st.session_state.ind_col_map,
                 )
                 st.session_state.fig_cluster = vis_cluster.fig
-
-                right_t3.plotly_chart(
-                    st.session_state.fig_cluster,
-                    use_container_width=True,
-                    theme="streamlit",
+                fig_cluster = st.session_state.get("fig_cluster")
+                if fig_cluster is not None and fig_cluster.data:
+                    right_t3.plotly_chart(fig_cluster, use_container_width=True, theme="streamlit")
+            else:  # 3D
+                vis_cluster3d = ClusterVisualisation3D(
+                    st.session_state.df,
+                    {k: v["label"] for k, v in st.session_state.FA_component_dict.items()},
+                    st.session_state.u_labels,
+                    st.session_state.centroids,
+                    st.session_state.ind_col_map,
                 )
+                st.session_state.fig_cluster3d = vis_cluster3d.fig
+                fig_cluster3d = st.session_state.get("fig_cluster3d")
+                if fig_cluster3d is not None and fig_cluster3d.data:
+                    right_t3.plotly_chart(fig_cluster3d, use_container_width=True, theme="streamlit")
 
+            st.session_state.tab3_done = True
+
+        # Cluster description section
         with right_t3:
-            # Cluster description
-            st.markdown(
-                "<h3><b>Description of each cluster</b></h3>", unsafe_allow_html=True
-            )
-            list_cluster_name = st.session_state.list_cluster_name
-            list_color_cluster = st.session_state.ind_col_map
-            list_description_cluster = st.session_state.list_description_cluster
-            if list_color_cluster is None:
-                pass
-            else:
+            st.markdown("<h3><b>Description of each cluster</b></h3>", unsafe_allow_html=True)
+            list_cluster_name = st.session_state.get("list_cluster_name")
+            list_color_cluster = st.session_state.get("ind_col_map")
+            list_description_cluster = st.session_state.get("list_description_cluster")
+
+            if list_color_cluster and list_cluster_name and list_description_cluster:
                 for i in list_color_cluster:
                     display_cluster_color(list_cluster_name[i], list_color_cluster[i])
                     st.write(list_description_cluster[i])
@@ -572,21 +521,27 @@ with tabs[3]:
 
         col_name = st.session_state.get("col_name")
         option_name = st.session_state.df_filtered.index.to_list()
+        
 
         if col_name is None:
             option_labels = [f"Entity №{i}" for i, _ in enumerate(option_name)]
+            
         else: 
             option_labels = (st.session_state.df_full.loc[option_name,selected_from_ignore].tolist())
-        label_to_value = dict(zip(option_labels, option_name))
-     
             
+        label_to_value = dict(zip(option_labels, option_name))
+        
+     
+        if "selected_entity" not in st.session_state or st.session_state.selected_entity is None:
+            st.session_state.selected_entity = option_labels[0]
+           
 
         # drop down with entity column, default to first column
         entity = left_t4.selectbox(
             label="Select entity",
             options=option_labels,
             key="selected_entity",
-            index=0,
+            #index=option_labels.index(st.session_state.selected_entity),
             on_change=add_to_fig,
         )
 
@@ -599,6 +554,7 @@ with tabs[3]:
                 indice = 0
             else:
                 indice = label_to_value[st.session_state.selected_entity]
+                
             st.session_state['indice'] = indice
                 
       
@@ -622,6 +578,8 @@ with tabs[3]:
                     visible=False,
                 )
                 description = CreateDescription()
+                description.synthesize_text()
+                print("synthesized text:", description.synthesized_text)
                 summary = description.stream_gpt(indice)
                 st.session_state.entity_description = summary
                 chat.add_message(summary)
