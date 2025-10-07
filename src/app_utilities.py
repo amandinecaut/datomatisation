@@ -6,7 +6,7 @@ from visualisation_utilities import (
     ClusterVisualisation3D,
     DistributionPlot
 )
-from description import ModelHandler, CreateDescription
+from description import ModelHandler, ClusterDescription
 
 from clustering import Cluster
 from sklearn.decomposition import FactorAnalysis
@@ -447,7 +447,7 @@ def create_QandA(text: str | None):
     component_text = [
         part 
         for details in st.session_state.FA_component_dict.values() 
-        for part in CreateDescription.split_qualities(details["label"])
+        for part in ClusterDescription.split_qualities(details["label"])
         ]
            
     msgs = {

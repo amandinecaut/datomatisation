@@ -9,7 +9,7 @@ import numpy as np
 import plotly
 
 import description
-from description import CreateDescription
+from description import ClusterDescription
 class Cluster:
     def __init__(self, df, FA_label_map, num_clusters):
         cols = [k for k in FA_label_map.keys()]
@@ -52,7 +52,7 @@ class Cluster:
         st.session_state.list_description_cluster = self.list_description_cluster
  
     def name_the_cluster(self, centroids):
-        create_description = CreateDescription()
+        create_description = ClusterDescription()
         liste_name_dim = []
         
         for _ , details in st.session_state.FA_component_dict.items():
@@ -81,7 +81,7 @@ class Cluster:
         return list_name_cluster
 
     def description_cluster(self, centroids):
-        create_description = CreateDescription()
+        create_description = ClusterDescription()
         liste_name_dim = []
         for _ , details in st.session_state.FA_component_dict.items():
             liste_name_dim.append(details['label'])

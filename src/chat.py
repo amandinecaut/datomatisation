@@ -42,7 +42,6 @@ class Chat:
         self.messages_to_display.append(message)
 
 
-
     def handle_input(self, input):
         """
         The main function that calls the GPT-4 API and processes the response.
@@ -72,6 +71,9 @@ class Chat:
         messages = [
             message for message in messages if isinstance(message["content"], str)
         ]
+
+        # Show the messages in an expander
+        st.expander("Chat transcript", expanded=False).write(messages)
 
         answer = self.MH.get_generate(messages, max_output_token=500)
         message = {"role": "assistant", "content": answer}
@@ -141,21 +143,6 @@ class EntityChat(Chat):
       
         super().__init__(chat_state_hash, state=state)
 
-    def get_input(self):
-        """
-        Get input from streamlit.
-        """
-
-        if x := st.chat_input(
-            placeholder=f"What else would you like to know about {st.session_state.selected_entity}?"
-        ):
-            if len(x) > 500:
-                st.error(
-                    f"Your message is too long ({len(x)} characters). Please keep it under 500 characters."
-                )
-
-            self.handle_input(x)
-
 
     def instruction_messages(self):
         """
@@ -196,7 +183,20 @@ class EntityChat(Chat):
 
         return ret_val
 
+    def get_input(self):
+        """
+        Get input from streamlit.
+        """
 
+        if x := st.chat_input(
+            placeholder=f"What else would you like to know about {st.session_state.selected_entity}?"
+        ):
+            if len(x) > 500:
+                st.error(
+                    f"Your message is too long ({len(x)} characters). Please keep it under 500 characters."
+                )
+
+            self.handle_input(x)
 
 
 

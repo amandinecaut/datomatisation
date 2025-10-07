@@ -21,20 +21,20 @@ class Description(ABC):
 
     @property
     @abstractmethod
-    #def gpt_examples_path(self) -> str:
-    #    """
-    #    Path to excel files containing examples of user and assistant messages for the GPT to learn from.
-    #    """
+    def gpt_examples_path(self) -> str:
+        """
+        Path to excel files containing examples of user and assistant messages for the GPT to learn from.
+        """
 
-
-
+    @property
+    @abstractmethod
     def describe_paths(self) -> Union[str, List[str]]:
         """
         List of paths to excel files containing questions and answers for the GPT to learn from.
         """
 
     def __init__(self):
-        #self.synthesized_text = self.synthesize_text()
+        self.synthesized_text = self.synthesize_text()
         self.messages = self.setup_messages()
         self._config = toml.load(".streamlit/secrets.toml")
 
@@ -143,16 +143,28 @@ class Description(ABC):
             FileNotFoundError
         ) as e:  # FIXME: When merging with new_training, add the other exception
             print(e)
+
         messages += self.get_prompt_messages()
 
         messages = [
             message for message in messages if isinstance(message["content"], str)
         ]
  
-        
+        try:
+            messages += self.get_messages_from_excel(
+                paths=self.gpt_examples_path,
+            )
+        except (
+            FileNotFoundError
+        ) as e:  # FIXME: When merging with new_training, add the other exception
+            print(e)
 
-
-        
+        messages += [
+            {
+                "role": "user",
+                "content": f"Now do the same thing with the following: ```{self.synthesized_text}```",
+            }
+        ]
         return messages
 
     def convert_messages_format(self, messages):
@@ -187,19 +199,20 @@ class Description(ABC):
         Yields:
             str
         """
-        self.messages += [
-            {
-                "role": "user",
-                "content": f"Now do the same thing with the following: ```{self.synthesized_text}```",
-            }
-        ]
+        #self.messages += [
+        #    {
+        #        "role": "user",
+        #        "content": f"Now do the same thing with the following: ```{self.synthesized_text}```",
+        #    }
+        #]
         
 
         st.expander("Chat transcript", expanded=False).write(self.messages)
     
         msgs = self.convert_messages_format(self.messages)
-       
-        answer = self.MH.get_generate(msgs, 150)
+        # TO CHANGE??
+        MH = ModelHandler()
+        answer = MH.get_generate(msgs, 150)
        
 
         return answer
@@ -208,6 +221,9 @@ class Description(ABC):
 
 class CreateDescription(Description):
 
+    @property
+    def gpt_examples_path(self):
+        return f"{self.describe_base}/_bigfive.xlsx"
 
     @property
     def describe_paths(self):
@@ -225,8 +241,7 @@ class CreateDescription(Description):
         self.FA_component_dict = st.session_state.FA_component_dict
 
         self.indice = st.session_state.indice
-        
-        self.MH = ModelHandler()
+       
 
         super().__init__()
 
@@ -261,9 +276,10 @@ class CreateDescription(Description):
             "is very high on ", 
             "is extremely high on "
             ]
-        return self.describe(thresholds, words, value)
+        return CreateDescription.describe(thresholds, words, value)
 
-    def describe(self, thresholds, words, value):
+    @staticmethod
+    def describe(thresholds, words, value):
         """
         thresholds = upper bound of each range in ascending order
         len(words) = len(thresholds) + 1
@@ -279,7 +295,7 @@ class CreateDescription(Description):
         # If no match (value exceeds the largest threshold), return the last word
         return words[-1]
 
-    def get_description(self, indice):
+    def get_description(self,indice):
         self.df = st.session_state.df.apply(zscore, nan_policy="omit")
         #print('INDICE IN GET DESCRIPTION')
         #print(indice)
@@ -295,7 +311,7 @@ class CreateDescription(Description):
             if not component:  # Skip if component is missing
                 continue
             
-            text_left, text_right = CreateDescription.split_qualities(component['label'])
+            text_left, text_right = ClusterDescription.split_qualities(component['label'])
             
             text += f"{st.session_state.selected_entity} "
         
@@ -335,6 +351,24 @@ class CreateDescription(Description):
         )
         return [{"role": "user", "content": prompt}]
 
+
+
+
+
+class ClusterDescription:
+
+    @property
+    def gpt_examples_path(self):
+        return f"{self.describe_base}/Forward_bigfive.xlsx" #TO CHANGE
+
+    @property
+    def describe_paths(self):
+        return [f"{self.describe_base}/QandA_data.csv"]
+
+    def __init__(self):
+        self.MH = ModelHandler()
+        super().__init__()
+
     def describe_level_cluster(self, value):
         thresholds=[-3,-2,-1.5, -1, -0.5, 0.5, 1,1.5, 2,3]
         words = [
@@ -350,7 +384,8 @@ class CreateDescription(Description):
         " very high on ",       
         " extremely high on "  
         ]
-        return self.describe(thresholds, words, value)
+        return CreateDescription.describe(thresholds, words, value)
+
 
     @staticmethod   
     def split_qualities(text):
@@ -364,6 +399,7 @@ class CreateDescription(Description):
         text1, text2 = parts[0].strip(), parts[1].strip()
 
         return text1, text2
+
 
     def get_cluster_label(self, text):
 
@@ -386,6 +422,7 @@ class CreateDescription(Description):
         text_generate = self.MH.get_generate(msgs, max_output_token = 5)
         return text_generate #.candidates[0].content.parts[0].text
     
+
     def get_cluster_description(self, text):
 
         msgs = {
@@ -403,6 +440,7 @@ class CreateDescription(Description):
         text_generate = self.MH.get_generate(msgs,max_output_token = 500)
         
         return text_generate 
+
 
 
 class ModelHandler:
