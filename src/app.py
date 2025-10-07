@@ -556,6 +556,8 @@ with tabs[3]:
                 indice = label_to_value[st.session_state.selected_entity]
                 
             st.session_state['indice'] = indice
+
+            #print(st.session_state.df[st.session_state.df.index == indice])
                 
       
 
@@ -579,7 +581,7 @@ with tabs[3]:
                 )
                 description = CreateDescription()
                 description.synthesize_text()
-                print("synthesized text:", description.synthesized_text)
+                #print("synthesized text:", description.synthesized_text)
                 summary = description.stream_gpt(indice)
                 st.session_state.entity_description = summary
                 chat.add_message(summary)
@@ -596,7 +598,7 @@ with tabs[3]:
 
 # debug
 # print()
-# print(st.session_state)
+
 # print("foo")
 # for key, value in st.session_state.items():
 #     print(key)  # , value)

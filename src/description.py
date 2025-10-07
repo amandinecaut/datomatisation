@@ -35,12 +35,21 @@ class Description(ABC):
 
     def __init__(self):
         self.synthesized_text = self.synthesize_text()
+        self.description_cluster = self.get_description_cluster()   
         self.messages = self.setup_messages()
         self._config = toml.load(".streamlit/secrets.toml")
 
     def synthesize_text(self) -> str:
         """
         Return a data description that will be used to prompt GPT.
+
+        Returns:
+        str
+        """
+
+    def get_description_cluster(self) -> str:
+        """
+        Return a description of the cluster that will be used to prompt GPT.
 
         Returns:
         str
@@ -151,13 +160,19 @@ class Description(ABC):
         ]
  
         try:
-            messages += self.get_messages_from_excel(
-                paths=self.gpt_examples_path,
-            )
+            paths=self.gpt_examples_path
+            messages += self.get_messages_from_excel(paths)
         except (
             FileNotFoundError
         ) as e:  # FIXME: When merging with new_training, add the other exception
             print(e)
+
+        messages += [
+            {   
+                "role": "user",
+                "content": f"{self.description_cluster}",
+            }
+        ]
 
         messages += [
             {
@@ -223,7 +238,7 @@ class CreateDescription(Description):
 
     @property
     def gpt_examples_path(self):
-        return f"{self.describe_base}/_bigfive.xlsx"
+        return f"{self.describe_base}/Forward_bigfive.xlsx"
 
     @property
     def describe_paths(self):
@@ -258,7 +273,7 @@ class CreateDescription(Description):
                 "content": (
                     "You are a data analyst. "
                     "You provide succinct and to the point explanations about the data.  "
-                    "You use the information given to you from the data and answers to earlier user/assistant pairs to give a description."
+                    "You use the information given to you from the data and answers from user/assistant pairs to give a description."
                 ),
             }
         ]
@@ -296,13 +311,11 @@ class CreateDescription(Description):
         return words[-1]
 
     def get_description(self,indice):
-        self.df = st.session_state.df.apply(zscore, nan_policy="omit")
-        #print('INDICE IN GET DESCRIPTION')
-        #print(indice)
-        #print('DF' )
-        #print(self.df)
-        self.df = self.df.iloc[indice, :].to_frame().T
+        
+        df = self.df.iloc[:, :-1].apply(zscore, nan_policy="omit")
 
+        indice = self.indice
+        
         text = ''
         for i in st.session_state.FA_component_dict.keys():
             
@@ -315,7 +328,8 @@ class CreateDescription(Description):
             
             text += f"{st.session_state.selected_entity} "
         
-            value = self.df[i].values[0]
+            value = df.loc[indice,i]#.values[0]
+         
            
         
             if not np.isnan(value):
@@ -329,8 +343,24 @@ class CreateDescription(Description):
                     text += f"In particular, {st.session_state.selected_entity} says that " + component["top"][0] + ". "
                 elif value < -1:
                     text += f"In particular, {st.session_state.selected_entity} says that " + component["bottom"][0] + ". "
-            
-        
+
+        return text
+
+
+    def get_description_cluster(self):
+        indice = self.indice
+        df = st.session_state.df
+        print(df)
+        cluster_number = int(df.at[indice, 'Cluster'])
+        print(cluster_number)
+        cluster_name = st.session_state.list_cluster_name[cluster_number]
+        print(cluster_name)
+        cluster_desc = st.session_state.list_description_cluster[cluster_number]
+        print(cluster_desc)
+        entity = st.session_state.selected_entity
+
+        text = f"{entity} belongs to cluster {cluster_number}: {cluster_name}. The cluster has the following description: {cluster_desc}."
+    
         return text
         
 
@@ -352,14 +382,11 @@ class CreateDescription(Description):
         return [{"role": "user", "content": prompt}]
 
 
-
-
-
 class ClusterDescription:
 
     @property
     def gpt_examples_path(self):
-        return f"{self.describe_base}/Forward_bigfive.xlsx" #TO CHANGE
+        return [f"{self.describe_base}/Forward_bigfive.xlsx"] #TO CHANGE
 
     @property
     def describe_paths(self):
