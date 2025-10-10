@@ -18,6 +18,8 @@ import json
 import app_utilities
 from app_utilities import *
 
+from embeddings import Embeddings
+
 
 st.set_page_config(layout="wide")
 
@@ -350,6 +352,23 @@ with tabs[1]:
                 QandA_df.to_csv(csv_path, index=False)
 
                 st.success("Q&A generated and saved!")
+
+
+                embeddings = Embeddings()
+
+                os.makedirs(os.path.dirname("./data/embeddings/"), exist_ok=True)
+                st.write("Starting to embedd " + directory)
+
+                path_describe = os.path.normpath("./data/describe/" + directory)
+                path_embedded = os.path.normpath("./data/embeddings/" + directory)
+
+                st.write("Updating all embeddings...")
+                for root, name in file_walk(path_describe):
+                    print_path = os.path.join(root, name).replace(path_describe, "")[1:]
+                    embed(os.path.join(root, name), embeddings)
+
+
+
                 st.session_state.tab2_done = True
             else:
                 st.error("Failed to generate Q&A. Please check your input.")

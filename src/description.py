@@ -350,13 +350,9 @@ class CreateDescription(Description):
     def get_description_cluster(self):
         indice = self.indice
         df = st.session_state.df
-        print(df)
         cluster_number = int(df.at[indice, 'Cluster'])
-        print(cluster_number)
         cluster_name = st.session_state.list_cluster_name[cluster_number]
-        print(cluster_name)
         cluster_desc = st.session_state.list_description_cluster[cluster_number]
-        print(cluster_desc)
         entity = st.session_state.selected_entity
 
         text = f"{entity} belongs to cluster {cluster_number}: {cluster_name}. The cluster has the following description: {cluster_desc}."

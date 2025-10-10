@@ -5,6 +5,8 @@ from types import GeneratorType
 import pandas as pd
 import json
 from description import CreateDescription,ModelHandler
+#from embeddings import CreateEmbeddings
+
 
 class Chat:
     def __init__(self, chat_state_hash, state="empty"):
@@ -139,7 +141,7 @@ class Chat:
 class EntityChat(Chat):
     def __init__(self, chat_state_hash,state="empty"):
         self.indice = st.session_state.indice
-        
+        #self.embeddings = CreateEmbeddings()
       
         super().__init__(chat_state_hash, state=state)
 
@@ -178,8 +180,14 @@ class EntityChat(Chat):
         
         ret_val += describe.synthesize_text()
 
+
+
+        #results = self.embeddings.search(query, top_n=5)
+        #ret_val += "\n\nHere is a description of some relevant information for answering the question:  \n"
+        #ret_val += "\n".join(results["assistant"].to_list())
+
         ret_val += f"\n\nIf none of this information is relevant to the users's query then use the information below to remind the user about the chat functionality: \n"
-   
+        ret_val += "This chat can answer questions about the dataset's statistic only."
 
         return ret_val
 
