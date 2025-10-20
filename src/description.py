@@ -311,13 +311,19 @@ class CreateDescription(Description):
         return words[-1]
 
     def get_description(self,indice):
-        
-        df = self.df.iloc[:, :-1].apply(zscore, nan_policy="omit")
+        df = self.df[list(self.FA_component_dict.keys())]
+        df = df.apply(zscore, nan_policy="omit")
+       
+
+
 
         indice = self.indice
         
         text = ''
+
         for i in st.session_state.FA_component_dict.keys():
+
+          
             
             component = st.session_state.FA_component_dict.get(i, {})
             
@@ -327,8 +333,11 @@ class CreateDescription(Description):
             text_left, text_right = ClusterDescription.split_qualities(component['label'])
             
             text += f"{st.session_state.selected_entity} "
+
+
         
             value = df.loc[indice,i]#.values[0]
+           
          
            
         
@@ -432,7 +441,7 @@ class ClusterDescription:
                 {
                 "role": "user",
                 "parts": (
-                    "You label a cluster."
+                    "You are going to label some clusters."
                     "The label has to be short and clear."
                     "The label should not have connotation negative."
                     "The label has to be different from previous labels."
@@ -444,7 +453,18 @@ class ClusterDescription:
             }
         text_generate = self.MH.get_generate(msgs, max_output_token = 5)
         return text_generate #.candidates[0].content.parts[0].text
-    
+
+#step 1
+# You are a data analyst, you are going to label some clusters.
+# but first you are going to answer some questions abut the previous steps in your analysis
+#step 2
+# add the qanda
+#step 3
+# add the previous the prompt
+#step 4
+# add examples
+
+
 
     def get_cluster_description(self, text):
 

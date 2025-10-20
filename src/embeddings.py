@@ -3,7 +3,9 @@ import pandas as pd
 import openai
 import os
 from description import ModelHandler
-
+from typing import List
+import numpy as np
+from tenacity import retry, wait_random_exponential, stop_after_attempt
 
 
 
@@ -25,9 +27,16 @@ def get_format(path):
         print("unected file: " + path)
     return file_format, read_func
 
+def embed(file_path, embeddings):
+    file_format, read_func = get_format(file_path)
+
+    df = read_func(file_path)
+    embedding_path = file_path.replace("describe", "embeddings").replace(
+        file_format, ".parquet"
+    )
 
 
-#@retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(6))
+@retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(6))
 def get_embedding(text: str, engine="text-similarity-davinci-001", use_gemini=False, **kwargs) -> List[float]:
 
     # replace newlines, which can negatively affect performance.
@@ -49,6 +58,8 @@ def get_embedding(text: str, engine="text-similarity-davinci-001", use_gemini=Fa
 
 def cosine_similarity(a, b):
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
+
+
 
 
 

@@ -212,6 +212,7 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
                 f"Principal component {i}" for i in range(principalComponents.shape[-1])
             ],
         )
+     
 
         # st.session_state.exp_ratio = PCA.explained_variance_ratio_ ## This is only for PCA
 
@@ -360,6 +361,8 @@ def display_results(component):
                 f"- ({results_dict[key]['values_bottom'][i]}) {results_dict[key]['bottom'][i]}"
             )
 
+def get_principalDf():
+    return self.principalDf
 
 ### ---- Clustering tab utilities ---- ###
 
@@ -460,7 +463,7 @@ def create_QandA(text: str | None):
                     "Deduce question and answer pairs, such that: the questions should be about each component, and the answers should explain them. "
                     "The question and answer are deduce from the factor analysis"
                     "The questions should be simple and the answers should be easy to understand."
-                    "Make a dataframe with two columns: one column is 'User' for the question, one column is 'Assistant. for the answers"
+                    "Make a dataframe with two columns: one column is 'User' for the question, one column is 'Assistant' for the answers"
                     "Provide just the data dictionary from the code snippet, excluding imports and the DataFrame creation, without the rest of the Python script."
                 ),
             }

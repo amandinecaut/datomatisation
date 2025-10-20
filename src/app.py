@@ -18,7 +18,7 @@ import json
 import app_utilities
 from app_utilities import *
 
-from embeddings import Embeddings
+from embeddings import Embeddings, embed
 
 
 st.set_page_config(layout="wide")
@@ -221,7 +221,14 @@ with tabs[0]:
                     # store it in session_state
                     st.session_state["col_name"] = selected_from_ignore
                     expander_col_name = right_t1.expander("Show the column used for the entity names")
-                    expander_col_name.write(st.session_state.df_full[[selected_from_ignore]])
+                    #expander_col_name.write(st.session_state.df_full[[selected_from_ignore]])
+                    expander_col_name.write(st.session_state.df_full.loc[st.session_state.df_filtered.index, [selected_from_ignore]])
+
+       
+
+            
+ 
+                
 
                 
 
@@ -296,7 +303,7 @@ with tabs[1]:
 
         if st.session_state.analysis == "LR":
             right_t2.markdown("---")
-            right_t2.write("## Logistic Regression results")
+            right_t2.write("## Work in progress")
 
             right_t2.markdown("---")
             right_t2.write("## Question and Answer pairs")
@@ -345,28 +352,29 @@ with tabs[1]:
                 # Save Q&A as CSV
                 QandA_df = pd.DataFrame(QandA)
                 # Path to save the CSV
-                csv_path = "./data/describe/QandA_data.csv"
+                QandA_path = "./data/describe/QandA_data.csv"
                 # Ensure the folder exists
-                os.makedirs(os.path.dirname(csv_path), exist_ok=True)
+                os.makedirs(os.path.dirname(QandA_path), exist_ok=True)
                 # Save the DataFrame as a CSV file
-                QandA_df.to_csv(csv_path, index=False)
+                QandA_df.to_csv(QandA_path, index=False)
 
                 st.success("Q&A generated and saved!")
 
 
                 embeddings = Embeddings()
 
-                os.makedirs(os.path.dirname("./data/embeddings/"), exist_ok=True)
-                st.write("Starting to embedd " + directory)
+                directory = os.makedirs(os.path.dirname("./data/embeddings/"), exist_ok=True)
+                st.write("Starting to embedd ")
 
-                path_describe = os.path.normpath("./data/describe/" + directory)
-                path_embedded = os.path.normpath("./data/embeddings/" + directory)
+           
+                
 
                 st.write("Updating all embeddings...")
-                for root, name in file_walk(path_describe):
-                    print_path = os.path.join(root, name).replace(path_describe, "")[1:]
-                    embed(os.path.join(root, name), embeddings)
+                #for root, name in file_walk(path_describe):
+                #    print_path = os.path.join(root, name).replace(path_describe, "")[1:]
+                #    embed(os.path.join(root, name), embeddings)
 
+                embed(QandA_path,embeddings)
 
 
                 st.session_state.tab2_done = True
@@ -539,16 +547,16 @@ with tabs[3]:
         left_t4.markdown("### Select entity")
 
         col_name = st.session_state.get("col_name")
-        option_name = st.session_state.df_filtered.index.to_list()
-        
+        option_row = st.session_state.df_filtered.index.to_list()
+            
 
         if col_name is None:
-            option_labels = [f"Entity №{i}" for i, _ in enumerate(option_name)]
+            option_labels = [f"Entity №{i}" for i, _ in enumerate(option_row)]
             
         else: 
-            option_labels = (st.session_state.df_full.loc[option_name,selected_from_ignore].tolist())
-            
-        label_to_value = dict(zip(option_labels, option_name))
+            option_labels = st.session_state.df_full.loc[st.session_state.df_filtered.index, selected_from_ignore] 
+             
+        label_to_value = dict(zip(option_labels, option_row))
         
      
         if "selected_entity" not in st.session_state or st.session_state.selected_entity is None:

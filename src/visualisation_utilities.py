@@ -352,10 +352,15 @@ class DistributionPlot:
                     opacity=0.65,
                     side='positive',
                     showlegend = False,
-                    hovertemplate=f"<b>{cols[i]}</b><br>Value: %{{x}}<br>Count: %{{y}}<extra></extra>"
+                    #hovertemplate=f"<b>{cols[i]}</b><br>Value: %{{x}}<br>Count: %{{y}}<extra></extra>",
+                    hoverinfo="skip", hovertemplate=None,
+                    points=False,
                 ),
                 row=i+1,
                 col=1
+            )
+            hovertext=(
+                  f"<b>{cols[i]}</b><br>Value: %{{x}}<br>Count: %{{y}}<extra></extra>"
             )
 
             self.fig.add_trace(
@@ -368,7 +373,7 @@ class DistributionPlot:
                     legendgroup ="Selected entity",
                     showlegend=False,
                     #showlegend=(i == 0),  # ensures legend is shown
-                    hovertemplate=f"<b>{cols[i]}</b><br>Value: %{{x}}<br><extra></extra>",
+                    hovertemplate= hovertext,#f"<b>{cols[i]}</b><br>Value: %{{x}}<br><extra></extra>",
                     ),
                     row=i+1,
                     col=1
