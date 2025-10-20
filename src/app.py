@@ -224,6 +224,22 @@ with tabs[0]:
                     #expander_col_name.write(st.session_state.df_full[[selected_from_ignore]])
                     expander_col_name.write(st.session_state.df_full.loc[st.session_state.df_filtered.index, [selected_from_ignore]])
 
+            with right_t1:
+                col_name = st.session_state.get("col_name")
+                option_row = st.session_state.df_filtered.index.to_list()
+            
+
+                if col_name is None:
+                    option_labels = [f"Entity №{i}" for i, _ in enumerate(option_row)]
+            
+                else: 
+                    option_labels = st.session_state.df_full.loc[st.session_state.df_filtered.index, selected_from_ignore] 
+             
+                label_to_value = dict(zip(option_labels, option_row))
+
+                print(option_labels.iloc[0])
+     
+
        
 
             
@@ -559,8 +575,8 @@ with tabs[3]:
         label_to_value = dict(zip(option_labels, option_row))
         
      
-        if "selected_entity" not in st.session_state or st.session_state.selected_entity is None:
-            st.session_state.selected_entity = option_labels[0]
+        #if "selected_entity" not in st.session_state or st.session_state.selected_entity is None:
+        #    st.session_state.selected_entity = option_labels.iloc[0]
            
 
         # drop down with entity column, default to first column
@@ -568,7 +584,7 @@ with tabs[3]:
             label="Select entity",
             options=option_labels,
             key="selected_entity",
-            #index=option_labels.index(st.session_state.selected_entity),
+            index=0,
             on_change=add_to_fig,
         )
 

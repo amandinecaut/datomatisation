@@ -360,7 +360,7 @@ class DistributionPlot:
                 col=1
             )
             hovertext=(
-                  f"<b>{cols[i]}</b><br>Value: %{{x}}<br>Count: %{{y}}<extra></extra>"
+                  f"<b>{cols[i]}</b><br>Value: %{{x}}<br><extra></extra>"
             )
 
             self.fig.add_trace(
