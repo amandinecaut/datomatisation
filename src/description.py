@@ -15,7 +15,6 @@ import os
 
 
 
-
 class Description(ABC):
     describe_base = "data/describe"
 
@@ -34,22 +33,13 @@ class Description(ABC):
         """
 
     def __init__(self):
-        self.synthesized_text = self.synthesize_text()
-        self.description_cluster = self.get_description_cluster()   
-        self.messages = self.setup_messages()
+        #self.synthesized_text = self.synthesize_text()
+        #self.messages = self.setup_messages()
         self._config = toml.load(".streamlit/secrets.toml")
 
     def synthesize_text(self) -> str:
         """
         Return a data description that will be used to prompt GPT.
-
-        Returns:
-        str
-        """
-
-    def get_description_cluster(self) -> str:
-        """
-        Return a description of the cluster that will be used to prompt GPT.
 
         Returns:
         str
@@ -63,7 +53,7 @@ class Description(ABC):
         List of dicts with keys "role" and "content".
         """
 
-    def get_intro_messages(self) -> List[Dict[str, str]]:
+    def tell_it_who_it_is(self) -> List[Dict[str, str]]:
         """
         Constant introduction messages for the assistant.
 
@@ -92,7 +82,7 @@ class Description(ABC):
 
         return intro
         
-    def get_messages_from_excel(self,paths: Union[str, List[str]],) -> List[Dict[str, str]]:
+    def tell_it_what_it_knows(self,paths: Union[str, List[str]],) -> List[Dict[str, str]]:
         """
         Turn an excel file containing user and assistant columns with str values into a list of dicts.
 
@@ -143,44 +133,12 @@ class Description(ABC):
         return messages
 
     def setup_messages(self) -> List[Dict[str, str]]:
-        messages = self.get_intro_messages()
+        """
+        Return a data description that will be used to prompt GPT.
 
-        try:
-            paths = self.describe_paths
-            messages += self.get_messages_from_excel(paths)
-        except (
-            FileNotFoundError
-        ) as e:  # FIXME: When merging with new_training, add the other exception
-            print(e)
-
-        messages += self.get_prompt_messages()
-
-        messages = [
-            message for message in messages if isinstance(message["content"], str)
-        ]
- 
-        try:
-            paths=self.gpt_examples_path
-            messages += self.get_messages_from_excel(paths)
-        except (
-            FileNotFoundError
-        ) as e:  # FIXME: When merging with new_training, add the other exception
-            print(e)
-
-        messages += [
-            {   
-                "role": "user",
-                "content": f"{self.description_cluster}",
-            }
-        ]
-
-        messages += [
-            {
-                "role": "user",
-                "content": f"Now do the same thing with the following: ```{self.synthesized_text}```",
-            }
-        ]
-        return messages
+        Returns:
+        list of dicts with keys "role" and "content".
+        """
 
     def convert_messages_format(self, messages):
         new_messages = []
@@ -214,18 +172,11 @@ class Description(ABC):
         Yields:
             str
         """
-        #self.messages += [
-        #    {
-        #        "role": "user",
-        #        "content": f"Now do the same thing with the following: ```{self.synthesized_text}```",
-        #    }
-        #]
         
-
         st.expander("Chat transcript", expanded=False).write(self.messages)
     
         msgs = self.convert_messages_format(self.messages)
-        # TO CHANGE??
+        
         MH = ModelHandler()
         answer = MH.get_generate(msgs, 150)
        
@@ -254,13 +205,13 @@ class CreateDescription(Description):
 
         self.df = st.session_state.df
         self.FA_component_dict = st.session_state.FA_component_dict
-
         self.indice = st.session_state.indice
-       
-
+        self.synthesized_text = self.synthesize_text()
+        self.messages = self.setup_messages()
+        
         super().__init__()
 
-    def get_intro_messages(self) -> List[Dict[str, str]]:
+    def tell_it_who_it_is(self) -> List[Dict[str, str]]:
         """
         Constant introduction messages for the assistant.
 
@@ -310,71 +261,52 @@ class CreateDescription(Description):
         # If no match (value exceeds the largest threshold), return the last word
         return words[-1]
 
-    def get_description(self,indice):
+    def get_description(self, indice):
         df = self.df[list(self.FA_component_dict.keys())]
         df = df.apply(zscore, nan_policy="omit")
-       
-
-
-
         indice = self.indice
-        
+
         text = ''
-
         for i in st.session_state.FA_component_dict.keys():
-
-          
-            
             component = st.session_state.FA_component_dict.get(i, {})
             
             if not component:  # Skip if component is missing
                 continue
             
             text_left, text_right = ClusterDescription.split_qualities(component['label'])
-            
             text += f"{st.session_state.selected_entity} "
-
-
-        
-            value = df.loc[indice,i]#.values[0]
-           
-         
-           
-        
+            value = df.loc[indice,i]
+    
             if not np.isnan(value):
                 if value >= 0:
                     text += self.describe_level(value) + text_right + '. '
                 else:
                     text += self.describe_level(value) + text_left + '. '
-
-
                 if value > 1:
                     text += f"In particular, {st.session_state.selected_entity} says that " + component["top"][0] + ". "
                 elif value < -1:
                     text += f"In particular, {st.session_state.selected_entity} says that " + component["bottom"][0] + ". "
-
         return text
 
-
-    def get_description_cluster(self):
-        indice = self.indice
-        df = st.session_state.df
+    def get_description_cluster_entity(self):
+        indice = st.session_state.indice
+        df = self.df
         cluster_number = int(df.at[indice, 'Cluster'])
         cluster_name = st.session_state.list_cluster_name[cluster_number]
         cluster_desc = st.session_state.list_description_cluster[cluster_number]
         entity = st.session_state.selected_entity
 
         text = f"{entity} belongs to cluster {cluster_number}: {cluster_name}. The cluster has the following description: {cluster_desc}."
-    
+
         return text
-        
+
 
     def synthesize_text(self):
-
         description = self.get_description(self.indice)
-        self.synthesized_text = description
+        description_cluster = self.get_description_cluster_entity()
 
-        return description
+        self.synthesized_text = f"{description}\n\n{description_cluster}"
+        return self.synthesized_text 
 
     def get_prompt_messages(self):
         prompt = (
@@ -382,12 +314,49 @@ class CreateDescription(Description):
             f"The first sentence should use varied language to give an overview of the entity. "
             "The second sentence should describe the entity's specific strengths based on the metrics. "
             "The third sentence should describe aspects in which the entity is average and/or weak based on the statistics. "
-            "Finally, summarise exactly how the entity compares to others in the same position. "
+            "Finally, summarise exactly the entity."
         )
         return [{"role": "user", "content": prompt}]
 
 
-class ClusterDescription:
+    def setup_messages(self) -> List[Dict[str, str]]:
+        """Builds and returns a list of chat messages for model input."""
+        messages = self.tell_it_who_it_is()
+
+        # --- Load description messages ---
+        try:
+            desc_paths = self.describe_paths
+            messages += self.tell_it_what_it_knows(desc_paths)
+        except FileNotFoundError as e:
+            # FIXME: When merging with new_training, add the other exception type
+            print(f"Describe paths file not found: {e}")
+
+        # --- Add prompt messages ---
+        messages += self.get_prompt_messages()
+
+        # --- Filter out non-string content ---
+        messages = [m for m in messages if isinstance(m.get("content"), str)]
+
+        # --- Load example messages ---
+        try:
+            example_paths = self.gpt_examples_path
+            messages += self.tell_it_what_it_knows(example_paths)
+        except FileNotFoundError as e:
+            # FIXME: When merging with new_training, add the other exception type
+            print(f"Example paths file not found: {e}")
+
+        # --- Add synthesized text message ---
+        messages.append(
+         {
+                "role": "user",
+                "content": f"Now do the same thing with the following: ```{self.synthesized_text}```",
+            }
+        )
+
+        return messages
+
+
+class ClusterDescription(Description):
 
     @property
     def gpt_examples_path(self):
@@ -399,7 +368,13 @@ class ClusterDescription:
 
     def __init__(self):
         self.MH = ModelHandler()
+        
         super().__init__()
+
+
+    def set_center(self, center):
+        self.center = center
+        print('CENTER', self.center)
 
     def describe_level_cluster(self, value):
         thresholds=[-3,-2,-1.5, -1, -0.5, 0.5, 1,1.5, 2,3]
@@ -454,35 +429,102 @@ class ClusterDescription:
         text_generate = self.MH.get_generate(msgs, max_output_token = 5)
         return text_generate #.candidates[0].content.parts[0].text
 
-#step 1
-# You are a data analyst, you are going to label some clusters.
-# but first you are going to answer some questions abut the previous steps in your analysis
-#step 2
-# add the qanda
-#step 3
-# add the previous the prompt
-#step 4
-# add examples
 
 
+    def tell_it_who_it_is(self) -> List[Dict[str, str]]:
+        """
+        Constant introduction messages for the assistant.
 
-    def get_cluster_description(self, text):
-
-        msgs = {
-            "system_instruction": "You are a data analyst.",
-            "history": [
-                {
-                "role": "user",
-                "parts": (
-                    "You have a description of a cluster. Make it better and more descriptive. Give only one option"
-                    ),
-                },
-                ],
-            "content": {"role": "user", "parts": text},
+        Returns:
+        List of dicts with keys "role" and "content".
+        """
+        intro = [
+            {
+                "role": "system",
+                "content": (
+                    "You are a data analyst. "
+                    "You are going to label some clusters."
+                    "First you are going to answer some questions abut the previous steps in your analysis."
+                ),
             }
-        text_generate = self.MH.get_generate(msgs,max_output_token = 500)
+        ]
+
+        return intro
+
+    def get_prompt_messages(self):
+        prompt = (
+                "You have a phrases that describe a cluster. Make it better and more descriptive. Give only one option"
+                )
         
-        return text_generate 
+        return [{"role": "user", "content": prompt}]
+
+
+    def description_cluster(self, center): 
+        list_name_dim = []
+        for _ , details in st.session_state.FA_component_dict.items():
+            list_name_dim.append(details['label'])
+        
+        list_description_cluster = []
+
+        
+        describe_center = []
+        for dim in np.arange(len(center)):
+            value_dim = center[dim]
+            text_dim = self.describe_level_cluster(value_dim)
+            text_low, text_high = self.split_qualities(list_name_dim[dim])
+
+            if value_dim >= 0:
+                text_dim += text_high
+            else:
+                text_dim += text_low
+            describe_center.append(text_dim)
+        text = ", ".join(describe_center)  
+            
+        return text
+
+    def synthesize_text(self, center):
+        description = self.description_cluster(center)
+        self.synthesized_text = description
+
+        return self.synthesized_text 
+
+
+    def setup_messages(self) -> List[Dict[str, str]]:
+        """Builds and returns a list of chat messages for model input."""
+        messages = self.tell_it_who_it_is()
+
+        # --- Load description messages ---
+        try:
+            # Adding the QandA
+            desc_paths = self.describe_paths
+            messages += self.tell_it_what_it_knows(desc_paths)
+        except FileNotFoundError as e:
+            # FIXME: When merging with new_training, add the other exception type
+            print(f"Describe paths file not found: {e}")
+
+        # --- Add prompt messages ---
+        messages += self.get_prompt_messages()
+
+        # --- Filter out non-string content ---
+        messages = [m for m in messages if isinstance(m.get("content"), str)]
+
+        # --- Load example messages ---
+        try:
+            example_paths = self.gpt_examples_path
+            messages += self.tell_it_what_it_knows(example_paths)
+        except FileNotFoundError as e:
+            # FIXME: When merging with new_training, add the other exception type
+            print(f"Example paths file not found: {e}")
+
+        # --- Add synthesized text message ---
+        messages.append(
+         {
+                "role": "user",
+                "content": f"Now do the same thing with the following: ```{self.synthesized_text}```",
+            }
+        )
+
+        return messages
 
 
 

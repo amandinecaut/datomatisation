@@ -10,6 +10,7 @@ import plotly
 
 import description
 from description import ClusterDescription
+
 class Cluster:
     def __init__(self, df, FA_label_map, num_clusters):
         cols = [k for k in FA_label_map.keys()]
@@ -17,7 +18,7 @@ class Cluster:
         self.df_values = df.values
         self.FA_label_map = FA_label_map
         self.num_clusters = num_clusters
-
+        self.desc = ClusterDescription() 
         self.clustering()
 
     def clustering(self):
@@ -34,10 +35,17 @@ class Cluster:
         
         # Store centroids and unique labels
         self.centroids = kmeans.cluster_centers_
+
+
+        self.desc = ClusterDescription() 
+
+
+
+
         # Get the cluster name
         self.list_cluster_name = self.name_the_cluster(self.centroids)
         # Get the cluster (long) description
-        self.list_description_cluster = self.description_cluster(self.centroids)
+        self.list_description_cluster = self.get_description_cluster_list(self.centroids)
         
         self.u_labels = self.df['Cluster'].unique()
 
@@ -50,23 +58,35 @@ class Cluster:
         st.session_state.df = self.df
         st.session_state.list_cluster_name =  self.list_cluster_name
         st.session_state.list_description_cluster = self.list_description_cluster
+
+    def get_description_cluster_list(self, centroids):
+      
+        list_description_cluster = []
+        for center in centroids:
+            self.desc.synthesize_text(center)
+            self.desc.messages = self.desc.setup_messages()
+          
+            description = self.desc.stream_gpt() 
+            list_description_cluster.append(description)
+
+        return list_description_cluster
+        
  
     def name_the_cluster(self, centroids):
-        create_description = ClusterDescription()
+        
         liste_name_dim = []
         
         for _ , details in st.session_state.FA_component_dict.items():
             liste_name_dim.append(details['label'])
-        
-        
+              
         list_name_cluster = []
 
         for center in self.centroids:
             describe_centroid = []
             for dim in np.arange(len(center)):
                 value_dim = center[dim]
-                text_dim = create_description.describe_level_cluster(value_dim)
-                text_low, text_high = create_description.split_qualities(liste_name_dim[dim])
+                text_dim = self.desc.describe_level_cluster(value_dim)
+                text_low, text_high = self.desc.split_qualities(liste_name_dim[dim])
 
 
                 if value_dim >= 0:
@@ -76,53 +96,25 @@ class Cluster:
                 describe_centroid.append(text_dim)
             text = ", ".join(describe_centroid)  
             
-            text = create_description.get_cluster_label(text)
+            text = self.desc.get_cluster_label(text)
             list_name_cluster.append(text)
         return list_name_cluster
 
-    def description_cluster(self, centroids):
-        create_description = ClusterDescription()
-        liste_name_dim = []
-        for _ , details in st.session_state.FA_component_dict.items():
-            liste_name_dim.append(details['label'])
-        
-        list_description_cluster = []
 
-        for center in self.centroids:
-            describe_centroid = []
-            for dim in np.arange(len(center)):
-                value_dim = center[dim]
-                text_dim = create_description.describe_level_cluster(value_dim)
-                text_low, text_high = create_description.split_qualities(liste_name_dim[dim])
-
-                if value_dim >= 0:
-                    text_dim += text_high
-                else:
-                    text_dim += text_low
-                describe_centroid.append(text_dim)
-            text = ", ".join(describe_centroid)  
-            
-            text = create_description.get_cluster_description(text)
-            list_description_cluster.append(text)
-        return list_description_cluster
 
 
     # Useless for now
-    def find_closest_points(self, kmeans):
-        """Find indices of the closest points to each cluster center."""
-        closest_pt_idx = []
-        for iclust in range(kmeans.n_clusters):
-            cluster_pts_indices = np.where(kmeans.labels_ == iclust)[0]
-
-
-            cluster_pts = self.df_values.iloc[cluster_pts_indices]
-            cluster_cen = kmeans.cluster_centers_[iclust]
-
+    #def find_closest_points(self, kmeans):
+    #    """Find indices of the closest points to each cluster center."""
+    #    closest_pt_idx = []
+    #    for iclust in range(kmeans.n_clusters):
+    #        cluster_pts_indices = np.where(kmeans.labels_ == iclust)[0]
+    #        cluster_pts = self.df_values.iloc[cluster_pts_indices]
+    #        cluster_cen = kmeans.cluster_centers_[iclust]
             # Efficient distance calculation
-            distances = cdist(cluster_pts, [cluster_cen])
-            min_idx = np.argmin(distances)
-            closest_pt_idx.append(cluster_pts_indices[min_idx])
-
-        return closest_pt_idx
+    #        distances = cdist(cluster_pts, [cluster_cen])
+    #        min_idx = np.argmin(distances)
+    #        closest_pt_idx.append(cluster_pts_indices[min_idx])
+    #    return closest_pt_idx
 
 

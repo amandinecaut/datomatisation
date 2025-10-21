@@ -223,31 +223,7 @@ with tabs[0]:
                     expander_col_name = right_t1.expander("Show the column used for the entity names")
                     #expander_col_name.write(st.session_state.df_full[[selected_from_ignore]])
                     expander_col_name.write(st.session_state.df_full.loc[st.session_state.df_filtered.index, [selected_from_ignore]])
-
-            with right_t1:
-                col_name = st.session_state.get("col_name")
-                option_row = st.session_state.df_filtered.index.to_list()
-            
-
-                if col_name is None:
-                    option_labels = [f"Entity №{i}" for i, _ in enumerate(option_row)]
-            
-                else: 
-                    option_labels = st.session_state.df_full.loc[st.session_state.df_filtered.index, selected_from_ignore] 
-             
-                label_to_value = dict(zip(option_labels, option_row))
-
-                print(option_labels.iloc[0])
      
-
-       
-
-            
- 
-                
-
-                
-
 
 # "Analysis Tools"
 with tabs[1]:
@@ -574,10 +550,7 @@ with tabs[3]:
              
         label_to_value = dict(zip(option_labels, option_row))
         
-     
-        #if "selected_entity" not in st.session_state or st.session_state.selected_entity is None:
-        #    st.session_state.selected_entity = option_labels.iloc[0]
-           
+
 
         # drop down with entity column, default to first column
         entity = left_t4.selectbox(
@@ -623,9 +596,9 @@ with tabs[3]:
                     visible=False,
                 )
                 description = CreateDescription()
-                description.synthesize_text()
+                #description.synthesize_text()
                 #print("synthesized text:", description.synthesized_text)
-                summary = description.stream_gpt(indice)
+                summary = description.stream_gpt()
                 st.session_state.entity_description = summary
                 chat.add_message(summary)
                 chat.state = "default"
