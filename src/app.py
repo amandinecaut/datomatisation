@@ -5,7 +5,7 @@ from visualisation_utilities import (
     DistributionPlot,
 )
 from chat import EntityChat
-from description import CreateDescription
+from wordalisation import CreateWordalisation
 from clustering import Cluster
 from google.generativeai import GenerationConfig
 import google.generativeai as genai
@@ -595,10 +595,10 @@ with tabs[3]:
                     user_only=False,
                     visible=False,
                 )
-                description = CreateDescription()
-                #description.synthesize_text()
-                #print("synthesized text:", description.synthesized_text)
-                summary = description.stream_gpt()
+                wordalisation = CreateWordalisation()
+                #description.tell_it_what_data_to_use()
+                #print("synthesized text:", description.synthetic_text)
+                summary = wordalisation.stream_gpt()
                 st.session_state.entity_description = summary
                 chat.add_message(summary)
                 chat.state = "default"

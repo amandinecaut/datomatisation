@@ -8,8 +8,8 @@ import pandas as pd
 import numpy as np
 import plotly
 
-import description
-from description import ClusterDescription
+import wordalisation
+from wordalisation import ClusterWordalisation
 
 class Cluster:
     def __init__(self, df, FA_label_map, num_clusters):
@@ -18,7 +18,7 @@ class Cluster:
         self.df_values = df.values
         self.FA_label_map = FA_label_map
         self.num_clusters = num_clusters
-        self.desc = ClusterDescription() 
+        self.desc = ClusterWordalisation() 
         self.clustering()
 
     def clustering(self):
@@ -37,7 +37,7 @@ class Cluster:
         self.centroids = kmeans.cluster_centers_
 
 
-        self.desc = ClusterDescription() 
+        self.desc = ClusterWordalisation() 
 
 
 
@@ -63,7 +63,7 @@ class Cluster:
       
         list_description_cluster = []
         for center in centroids:
-            self.desc.synthesize_text(center)
+            self.desc.tell_it_what_data_to_use(center)
             self.desc.messages = self.desc.setup_messages()
           
             description = self.desc.stream_gpt() 

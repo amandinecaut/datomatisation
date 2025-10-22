@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import openai
 import os
-from description import ModelHandler
+from wordalisation import ModelHandler
 from typing import List
 import numpy as np
 from tenacity import retry, wait_random_exponential, stop_after_attempt

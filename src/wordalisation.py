@@ -15,31 +15,31 @@ import os
 
 
 
-class Description(ABC):
+class Wordalisation(ABC):
     describe_base = "data/describe"
 
     @property
     @abstractmethod
-    def gpt_examples_path(self) -> str:
+    def tell_it_how_to_answer(self) -> str:
         """
-        Path to excel files containing examples of user and assistant messages for the GPT to learn from.
+        Path to excel files containing examples of user and assistant messages for the few-shot prompting to learn from.
         """
 
     @property
     @abstractmethod
-    def describe_paths(self) -> Union[str, List[str]]:
+    def tell_it_what_it_knows(self) -> Union[str, List[str]]:
         """
-        List of paths to excel files containing questions and answers for the GPT to learn from.
+        List of paths to excel files containing questions and answers for the injection of knowledge.
         """
 
     def __init__(self):
-        #self.synthesized_text = self.synthesize_text()
+        #self.synthetic_text = self.tell_it_what_data_to_use()
         #self.messages = self.setup_messages()
         self._config = toml.load(".streamlit/secrets.toml")
 
-    def synthesize_text(self) -> str:
+    def tell_it_what_data_to_use(self) -> str:
         """
-        Return a data description that will be used to prompt GPT.
+        Return a data description that will be used to prompt.
 
         Returns:
         str
@@ -47,7 +47,7 @@ class Description(ABC):
 
     def get_prompt_messages(self) -> List[Dict[str, str]]:
         """
-        Return the prompt that the GPT will see before self.synthesized_text.
+        Return the prompt that the LLM  will see before self.synthetic_text.
 
         Returns:
         List of dicts with keys "role" and "content".
@@ -82,7 +82,7 @@ class Description(ABC):
 
         return intro
         
-    def tell_it_what_it_knows(self,paths: Union[str, List[str]],) -> List[Dict[str, str]]:
+    def get_messages_from_excel(self,paths: Union[str, List[str]],) -> List[Dict[str, str]]:
         """
         Turn an excel file containing user and assistant columns with str values into a list of dicts.
 
@@ -134,7 +134,7 @@ class Description(ABC):
 
     def setup_messages(self) -> List[Dict[str, str]]:
         """
-        Return a data description that will be used to prompt GPT.
+        Return a data description that will be used to prompt the LLM.
 
         Returns:
         list of dicts with keys "role" and "content".
@@ -163,11 +163,11 @@ class Description(ABC):
 
     def stream_gpt(self, temperature=1):
         """
-        Run the GPT model on the messages and stream the output.
+        Run the LLM model on the messages and stream the output.
 
         Arguments:
         temperature: optional float
-            The temperature of the GPT model.
+            The temperature of the LLM model.
 
         Yields:
             str
@@ -185,14 +185,14 @@ class Description(ABC):
 
     
 
-class CreateDescription(Description):
+class CreateWordalisation(Wordalisation):
 
     @property
-    def gpt_examples_path(self):
+    def tell_it_how_to_answer(self):
         return f"{self.describe_base}/Forward_bigfive.xlsx"
 
     @property
-    def describe_paths(self):
+    def tell_it_what_it_knows(self):
         return [f"{self.describe_base}/QandA_data.csv"]
 
 
@@ -206,7 +206,7 @@ class CreateDescription(Description):
         self.df = st.session_state.df
         self.FA_component_dict = st.session_state.FA_component_dict
         self.indice = st.session_state.indice
-        self.synthesized_text = self.synthesize_text()
+        self.synthetic_text = self.tell_it_what_data_to_use()
         self.messages = self.setup_messages()
         
         super().__init__()
@@ -242,7 +242,7 @@ class CreateDescription(Description):
             "is very high on ", 
             "is extremely high on "
             ]
-        return CreateDescription.describe(thresholds, words, value)
+        return CreateWordalisation.describe(thresholds, words, value)
 
     @staticmethod
     def describe(thresholds, words, value):
@@ -273,7 +273,7 @@ class CreateDescription(Description):
             if not component:  # Skip if component is missing
                 continue
             
-            text_left, text_right = ClusterDescription.split_qualities(component['label'])
+            text_left, text_right = ClusterWordalisation.split_qualities(component['label'])
             text += f"{st.session_state.selected_entity} "
             value = df.loc[indice,i]
     
@@ -301,12 +301,12 @@ class CreateDescription(Description):
         return text
 
 
-    def synthesize_text(self):
+    def tell_it_what_data_to_use(self):
         description = self.get_description(self.indice)
         description_cluster = self.get_description_cluster_entity()
 
-        self.synthesized_text = f"{description}\n\n{description_cluster}"
-        return self.synthesized_text 
+        self.synthetic_text = f"{description}\n\n{description_cluster}"
+        return self.synthetic_text 
 
     def get_prompt_messages(self):
         prompt = (
@@ -323,10 +323,10 @@ class CreateDescription(Description):
         """Builds and returns a list of chat messages for model input."""
         messages = self.tell_it_who_it_is()
 
-        # --- Load description messages ---
+        # --- Load QandA ---
         try:
-            desc_paths = self.describe_paths
-            messages += self.tell_it_what_it_knows(desc_paths)
+            tell_it_what_it_knows_paths = self.tell_it_what_it_knows
+            messages += self.get_messages_from_excel(tell_it_what_it_knows_paths)
         except FileNotFoundError as e:
             # FIXME: When merging with new_training, add the other exception type
             print(f"Describe paths file not found: {e}")
@@ -337,10 +337,10 @@ class CreateDescription(Description):
         # --- Filter out non-string content ---
         messages = [m for m in messages if isinstance(m.get("content"), str)]
 
-        # --- Load example messages ---
+        # --- Load few-shots examples  ---
         try:
-            example_paths = self.gpt_examples_path
-            messages += self.tell_it_what_it_knows(example_paths)
+            example_paths = self.tell_it_how_to_answer
+            messages += self.get_messages_from_excel(example_paths)
         except FileNotFoundError as e:
             # FIXME: When merging with new_training, add the other exception type
             print(f"Example paths file not found: {e}")
@@ -349,17 +349,17 @@ class CreateDescription(Description):
         messages.append(
          {
                 "role": "user",
-                "content": f"Now do the same thing with the following: ```{self.synthesized_text}```",
+                "content": f"Now do the same thing with the following: ```{self.synthetic_text}```",
             }
         )
 
         return messages
 
 
-class ClusterDescription(Description):
+class ClusterWordalisation(Wordalisation):
 
     @property
-    def gpt_examples_path(self):
+    def tell_it_how_to_answer(self):
         return [f"{self.describe_base}/Forward_bigfive.xlsx"] #TO CHANGE
 
     @property
@@ -391,7 +391,7 @@ class ClusterDescription(Description):
         " very high on ",       
         " extremely high on "  
         ]
-        return CreateDescription.describe(thresholds, words, value)
+        return CreateWordalisation.describe(thresholds, words, value)
 
 
     @staticmethod   
@@ -458,7 +458,6 @@ class ClusterDescription(Description):
         
         return [{"role": "user", "content": prompt}]
 
-
     def description_cluster(self, center): 
         list_name_dim = []
         for _ , details in st.session_state.FA_component_dict.items():
@@ -482,22 +481,21 @@ class ClusterDescription(Description):
             
         return text
 
-    def synthesize_text(self, center):
+    def tell_it_what_data_to_use(self, center):
         description = self.description_cluster(center)
-        self.synthesized_text = description
+        self.synthetic_text = description
 
-        return self.synthesized_text 
+        return self.synthetic_text 
 
 
     def setup_messages(self) -> List[Dict[str, str]]:
         """Builds and returns a list of chat messages for model input."""
         messages = self.tell_it_who_it_is()
 
-        # --- Load description messages ---
+        # --- Load QandA ---
         try:
-            # Adding the QandA
-            desc_paths = self.describe_paths
-            messages += self.tell_it_what_it_knows(desc_paths)
+            tell_it_what_it_knows_paths = self.tell_it_what_it_knows
+            messages += self.get_messages_from_excel(tell_it_what_it_knows_paths)
         except FileNotFoundError as e:
             # FIXME: When merging with new_training, add the other exception type
             print(f"Describe paths file not found: {e}")
@@ -508,10 +506,10 @@ class ClusterDescription(Description):
         # --- Filter out non-string content ---
         messages = [m for m in messages if isinstance(m.get("content"), str)]
 
-        # --- Load example messages ---
+        # --- Load few-shots examples  ---
         try:
-            example_paths = self.gpt_examples_path
-            messages += self.tell_it_what_it_knows(example_paths)
+            example_paths = self.tell_it_how_to_answer
+            messages += self.get_messages_from_excel(example_paths)
         except FileNotFoundError as e:
             # FIXME: When merging with new_training, add the other exception type
             print(f"Example paths file not found: {e}")
@@ -520,7 +518,7 @@ class ClusterDescription(Description):
         messages.append(
          {
                 "role": "user",
-                "content": f"Now do the same thing with the following: ```{self.synthesized_text}```",
+                "content": f"Now do the same thing with the following: ```{self.synthetic_text}```",
             }
         )
 

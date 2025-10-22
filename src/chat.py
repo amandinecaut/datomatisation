@@ -4,7 +4,7 @@ from itertools import groupby
 from types import GeneratorType
 import pandas as pd
 import json
-from description import CreateDescription,ModelHandler
+from wordalisation import CreateWordalisation,ModelHandler
 #from embeddings import CreateEmbeddings
 
 
@@ -174,11 +174,11 @@ class EntityChat(Chat):
             query = self.visible_messages[-1]["content"]
 
         ret_val = f"Here is a description of {st.session_state.selected_entity} in terms of data: \n\n"
-        describe =  CreateDescription()
+        describe =  CreateWordalisation()
         summary = describe.stream_gpt(self.indice)
 
         
-        ret_val += describe.synthesize_text()
+        ret_val += describe.tell_it_what_data_to_use()
 
 
 
