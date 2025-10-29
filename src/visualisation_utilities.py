@@ -379,15 +379,15 @@ class DistributionPlot:
                     col=1
                     )
 
-        self.fig.add_trace(
-            go.Scatter(
-                x=[None], y=[None],
-                mode="markers",
-                marker=dict(symbol="diamond", size=6, color="#9340ff"),
-                name="Selected Entity",
-                showlegend=True
-                )
-            )
+        #self.fig.add_trace(
+        #    go.Scatter(
+        #        x=[None], y=[None],
+        #        mode="markers",
+        #        marker=dict(symbol="diamond", size=6, color="#9340ff"),
+        #        name=f"{st.session_state.selected_entity}",
+        #        showlegend=True
+        #        )
+        #    )
 
         # Update layout
         self.fig.update_layout(
