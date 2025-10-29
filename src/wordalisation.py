@@ -71,7 +71,7 @@ class Wordalisation(ABC):
                 ),
             },
         ]
-        if len(self.describe_paths) > 0:
+        if len(self.tell_it_what_it_knows) > 0:
             intro += [
                 {
                     "role": "user",
@@ -189,7 +189,7 @@ class CreateWordalisation(Wordalisation):
 
     @property
     def tell_it_how_to_answer(self):
-        return f"{self.describe_base}/Forward_bigfive.xlsx"
+        return f"{self.describe_base}/few_shot_examples.xlsx"
 
     @property
     def tell_it_what_it_knows(self):
@@ -283,9 +283,9 @@ class CreateWordalisation(Wordalisation):
                 else:
                     text += self.describe_level(value) + text_left + '. '
                 if value > 1:
-                    text += f"In particular, {st.session_state.selected_entity} says that " + component["top"][0] + ". "
+                    text += f"In particular, {st.session_state.selected_entity} indicates that " + component["top"][0] + ". "
                 elif value < -1:
-                    text += f"In particular, {st.session_state.selected_entity} says that " + component["bottom"][0] + ". "
+                    text += f"In particular, {st.session_state.selected_entity} indicates that " + component["bottom"][0] + ". "
         return text
 
     def get_description_cluster_entity(self):
@@ -360,21 +360,15 @@ class ClusterWordalisation(Wordalisation):
 
     @property
     def tell_it_how_to_answer(self):
-        return [f"{self.describe_base}/Forward_bigfive.xlsx"] #TO CHANGE
+        return [f"{self.describe_base}/few_shot_cluster.xlsx"] 
 
     @property
-    def describe_paths(self):
+    def tell_it_what_it_knows(self):
         return [f"{self.describe_base}/QandA_data.csv"]
 
     def __init__(self):
         self.MH = ModelHandler()
-        
         super().__init__()
-
-
-    def set_center(self, center):
-        self.center = center
-        print('CENTER', self.center)
 
     def describe_level_cluster(self, value):
         thresholds=[-3,-2,-1.5, -1, -0.5, 0.5, 1,1.5, 2,3]
@@ -393,7 +387,6 @@ class ClusterWordalisation(Wordalisation):
         ]
         return CreateWordalisation.describe(thresholds, words, value)
 
-
     @staticmethod   
     def split_qualities(text):
         # Use a regular expression to split on " vs " (case-insensitive)
@@ -406,7 +399,6 @@ class ClusterWordalisation(Wordalisation):
         text1, text2 = parts[0].strip(), parts[1].strip()
 
         return text1, text2
-
 
     def get_cluster_label(self, text):
 
@@ -428,8 +420,6 @@ class ClusterWordalisation(Wordalisation):
             }
         text_generate = self.MH.get_generate(msgs, max_output_token = 5)
         return text_generate #.candidates[0].content.parts[0].text
-
-
 
     def tell_it_who_it_is(self) -> List[Dict[str, str]]:
         """
@@ -453,7 +443,12 @@ class ClusterWordalisation(Wordalisation):
 
     def get_prompt_messages(self):
         prompt = (
-                "You have a phrases that describe a cluster. Make it better and more descriptive. Give only one option"
+                "You will be provide a list that describe a cluster."
+                "Write a paragraph that describe that cluster."
+                "You also provide a first sentence that use varied language to give an overview of the cluster."
+                "The second sentence should describe the cluster specific strengths based on the provided list."
+                "The third sentence should describe aspects in which the cluster average and/or weak based on the provided list."
+                "Finally, summarise exactly the cluster."
                 )
         
         return [{"role": "user", "content": prompt}]
@@ -486,7 +481,6 @@ class ClusterWordalisation(Wordalisation):
         self.synthetic_text = description
 
         return self.synthetic_text 
-
 
     def setup_messages(self) -> List[Dict[str, str]]:
         """Builds and returns a list of chat messages for model input."""

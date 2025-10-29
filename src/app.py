@@ -319,7 +319,7 @@ with tabs[1]:
 
             # Show text area only if "Yes" is selected
             text = (
-                right_t2.text_area("Enter more information here here:")
+                right_t2.text_area("Add more specific domain information here:")
                 if introduction_choice == "Yes"
                 else None
             )
