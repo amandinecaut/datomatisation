@@ -266,6 +266,62 @@ class CreateWordalisation(Wordalisation):
         df = df.apply(zscore, nan_policy="omit")
         indice = self.indice
 
+        dictionary = st.session_state.col_mapping
+        results_dict = st.session_state.FA_component_dict
+
+        text = ''
+
+        for component_key, component in results_dict.items():
+            if not component:
+                continue
+
+            text_left, text_right = ClusterWordalisation.split_qualities(component['label'])
+            text += f"{st.session_state.selected_entity} "
+            value = df.loc[indice, component_key]
+
+            if np.isnan(value):
+                continue
+
+            # Describe the value
+            if value >= 0:
+                text += self.describe_level(value) + text_right + '. '
+            else:
+                text += self.describe_level(value) + text_left + '. '
+
+            # Map top features to columns
+            top_map_list = [
+             k for k, v in dictionary.items() if v in component["top"]
+            ]
+            print('TOP MAP LIST:')
+            print(top_map_list)
+            bottom_map_list = [
+             k for k, v in dictionary.items() if v in component["bottom"]
+            ]
+            print('BOTTOM MAP LIST:')
+            print(bottom_map_list)  
+
+            # Fast argmax / argmin using NumPy
+            if value > 1 and top_map_list:
+                top_values = st.session_state.df_filtered.loc[indice, top_map_list].values
+                argmax_idx = np.argmax(top_values)
+                argmax_column = top_map_list[argmax_idx]
+                text += f"In particular, {st.session_state.selected_entity} indicates that {dictionary[argmax_column]}. "
+
+            elif value < -1 and bottom_map_list:
+                bottom_values = st.session_state.df_filtered.loc[indice, bottom_map_list].values
+                argmin_idx = np.argmin(bottom_values)
+                argmin_column = bottom_map_list[argmin_idx]
+                text += f"In particular, {st.session_state.selected_entity} indicates that {dictionary[argmin_column]}. "
+
+        return text
+
+
+
+    def get_description(self, indice):
+        df = self.df[list(self.FA_component_dict.keys())]
+        df = df.apply(zscore, nan_policy="omit")
+        indice = self.indice
+
         text = ''
         for i in st.session_state.FA_component_dict.keys():
             component = st.session_state.FA_component_dict.get(i, {})

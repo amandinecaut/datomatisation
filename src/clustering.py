@@ -25,28 +25,18 @@ class Cluster:
         """Perform K-Means clustering and store results."""
         
         kmeans = KMeans(n_clusters=self.num_clusters, init='k-means++', max_iter=100, n_init=50, random_state=42)
-        
         # Fit and predict cluster labels
         labels = kmeans.fit_predict(self.df)
-
-        
         self.df['Cluster'] = labels
-
-        
         # Store centroids and unique labels
         self.centroids = kmeans.cluster_centers_
 
-
         self.desc = ClusterWordalisation() 
-
-
-
 
         # Get the cluster name
         self.list_cluster_name = self.name_the_cluster(self.centroids)
-        # Get the cluster (long) description
+        # Get the cluster description
         self.list_description_cluster = self.get_description_cluster_list(self.centroids)
-        
         self.u_labels = self.df['Cluster'].unique()
 
 

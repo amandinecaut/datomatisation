@@ -49,9 +49,6 @@ default_values = {
     "selected_entity" : None,
 }
 
-
-
-
 ### ---- Load data tab utilities ---- ###
 
 def set_default_data():
@@ -364,6 +361,7 @@ def display_results(component):
 def get_principalDf():
     return self.principalDf
 
+
 ### ---- Clustering tab utilities ---- ###
 
 # Cluster utilities
@@ -532,14 +530,13 @@ def add_to_fig():
         st.session_state.fig_base.update_traces(
             selector={"name": f"{col} selected"}, x=df[col]
         )
-    st.session_state.fig_base.add_trace(
-        go.Scatter( 
-            x=[None], y=[None],
-            mode="markers",
-            marker=dict(symbol="diamond", size=6, color=color),
-            name=f"{st.session_state.selected_entity}",
-            showlegend=True
-        ))
+
+    st.session_state.fig_base.update_traces(
+        selector={"uid" : "dummy_legend_name"}, 
+        name = f"{st.session_state.selected_entity}"
+        )
+
+
 
     if "fig" in st.session_state:
         del st.session_state["fig"]

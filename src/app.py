@@ -303,6 +303,7 @@ with tabs[1]:
             
 
         if FA_done:
+
             right_t2.write(
                 """
                  ADA will now generate Question–Answer pairs for clustering and visualisation. 
