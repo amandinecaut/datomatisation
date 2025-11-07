@@ -378,7 +378,7 @@ class DistributionPlot:
                     row=i+1,
                     col=1
                     )
-
+        
         self.fig.add_trace(
             go.Scatter(
                 x=[None], y=[None],

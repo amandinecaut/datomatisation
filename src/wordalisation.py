@@ -60,27 +60,27 @@ class Wordalisation(ABC):
         Returns:
         List of dicts with keys "role" and "content".
         """
-        intro = [
-            {
-                "role": "system",
-                "content": (
-                    "You are a data analysis bot. "
-                    "You provide succinct and to the point explanations about data using data. "
-                    "You use the information given to you from the data and answers. "
-                    "Use earlier user/assistant pairs to give summaries of the data."
-                ),
-            },
-        ]
-        if len(self.tell_it_what_it_knows) > 0:
-            intro += [
-                {
-                    "role": "user",
-                    "content": "First, could you answer some questions about the data for me?",
-                },
-                {"role": "assistant", "content": "Sure!"},
-            ]
+        #intro = [
+        #    {
+        #        "role": "system",
+        #        "content": (
+        #            "You are a data analysis bot. "
+        #            "You provide succinct and to the point explanations about data using data. "
+        #            "You use the information given to you from the data and answers. "
+        #            "Use earlier user/assistant pairs to give summaries of the data."
+        #        ),
+        #    },
+        #]
+        #if len(self.tell_it_what_it_knows) > 0:
+        #    intro += [
+        #        {
+        #            "role": "user",
+        #            "content": "First, could you answer some questions about the data for me?",
+        #        },
+        #        {"role": "assistant", "content": "Sure!"},
+        #    ]
 
-        return intro
+        #return intro
         
     def get_messages_from_excel(self,paths: Union[str, List[str]],) -> List[Dict[str, str]]:
         """
@@ -336,11 +336,11 @@ class CreateWordalisation(Wordalisation):
 
     def get_prompt_messages(self):
         prompt = (
-            "Please use the statistical description enclosed with ``` to give a concise, 4 sentence summary of the entity. "
-            "The first sentence should use varied language to give an overview of the entity. "
-            "The second sentence should describe the entity's specific strengths based on the metrics. "
-            "The third sentence should describe aspects in which the entity is average and/or weak based on the statistics. "
-            "Finally, summarize the entity with a single concluding statement." 
+            "Please use the statistical description enclosed with ``` to give a concise, four sentence summary of the entity. \n"
+            "The first sentence should use varied language to give an overview of the entity. \n"
+            "The second sentence should describe the entity's specific strengths based on the metrics. \n"
+            "The third sentence should describe aspects in which the entity is average and/or weak based on the statistics. \n"
+            "Finally, summarize the entity with a single concluding statement. \n" 
         )
         return [{"role": "user", "content": prompt}]
 
@@ -391,14 +391,14 @@ class CreateWordalisation(Wordalisation):
         messages += [{
             "role": "user",
             "content": (
-            "Your task is to summarize a specific entity. "
-            "You will be provided with descriptions of entities from previous analyses on different datasets. "
-            "These examples illustrate the type of language you use and how you describe individuals in terms of scales and clusters."
-            "For each entity, provide a concise three-sentence summary."
-            "The first sentence should give an overview of the entity. "
-            "The second sentence should describe the entity's specific strengths based on the metrics. "
-            "The third sentence should describe aspects in which the entity is average and/or weak based on the statistics. "
-            "Finally, summarise exactly how the entity compares to others in the same position. "
+            "Your task is to summarize a specific entity.\n"
+            "You will be provided with descriptions of entities from previous analyses on different datasets.\n"
+            "These examples illustrate the type of language you use and how you describe individuals in terms of scales and clusters.\n"
+            "For each entity, provide a concise four sentence summary.\n"
+            "The first sentence should give an overview of the entity.\n "
+            "The second sentence should describe the entity's specific strengths based on the metrics.\n"
+            "The third sentence should describe aspects in which the entity is average and/or weak based on the statistics.\n"
+            "Finally, summarize the entity with a single concluding statement.\n"
             )
             }]
 
@@ -469,22 +469,24 @@ class ClusterWordalisation(Wordalisation):
 
     def get_cluster_label(self, text):
 
-        msgs = { "system_instruction": "You are a data analyst.", 
-        "history": [ { 
-            "role": "user", 
-            "parts": ( 
-                "You are going to label some clusters.\n" 
-                "The label has to be short and clear.\n" 
-                "The label should not have connotation negative.\n" 
-                "The label has to be different from previous labels \n" 
-                "Output a label only." 
-                ), 
+        msgs = { 
+            "system_instruction": "You are a data analyst.", 
+            "history": [ 
+                { 
+                "role": "user", 
+                "parts": ( 
+                    "You are going to label some clusters.\n" 
+                    "The label has to be short and clear.\n" 
+                    "The label should not have negative connotation.\n" 
+                    "The label must be different from previous labels.\n"
+                    "Output a label only." 
+                    ), 
                 }, 
                 ], 
             "content": {"role": "user", "parts": text}, }
         text_generate = self.MH.get_generate(msgs, max_output_token = 5)
-        return text_generate.lower() #.candidates[0].content.parts[0].text
-
+        
+        return text_generate.lower() 
 
 
 
@@ -510,13 +512,13 @@ class ClusterWordalisation(Wordalisation):
 
     def get_prompt_messages(self):
         prompt = (
-                "You will be provide a list that describe a cluster."
-                "Write a paragraph that describe that cluster."
-                "You also provide a first sentence that use varied language to give an overview of the cluster."
-                "The second sentence should describe the cluster specific strengths based on the provided list."
-                "The third sentence should describe aspects in which the cluster average and/or weak based on the provided list."
-                "Finally, summarise exactly the cluster."
-                )
+            "You will be provided with a list that describes a cluster.\n"
+            "Write a paragraph that describes the cluster.\n"
+            "The first sentence should use varied language to give an overview of the cluster.\n"
+            "The second sentence should describe the cluster's specific strengths based on the provided list.\n"
+            "The third sentence should describe aspects in which the cluster is average and/or weak based on the provided list.\n"
+            "Finally, provide a concise summary of the cluster."
+        )
         
         return [{"role": "user", "content": prompt}]
 
@@ -578,7 +580,7 @@ class ClusterWordalisation(Wordalisation):
         # --- Add synthesized text message ---
         messages.append(
          {
-                "role": "Assistant",
+                "role": "user",
                 "content": f"Now do the same thing with the following: ```{self.synthetic_text}```",
             }
         )

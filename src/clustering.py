@@ -64,19 +64,22 @@ class Cluster:
  
     def name_the_cluster(self, centroids):
         
-        liste_name_dim = []
+        list_name_dim = []
         
         for _ , details in st.session_state.FA_component_dict.items():
-            liste_name_dim.append(details['label'])
+            list_name_dim.append(details['label'])
+        
               
         list_name_cluster = []
 
-        for center in self.centroids:
+        for center in centroids:
+            print("Center:")
+            print(center)
             describe_centroid = []
             for dim in np.arange(len(center)):
                 value_dim = center[dim]
                 text_dim = self.desc.describe_level_cluster(value_dim)
-                text_low, text_high = self.desc.split_qualities(liste_name_dim[dim])
+                text_low, text_high = self.desc.split_qualities(list_name_dim[dim])
 
 
                 if value_dim >= 0:

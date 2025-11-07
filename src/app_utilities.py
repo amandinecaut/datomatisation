@@ -34,7 +34,6 @@ default_values = {
     "u_labels": np.array([]),
     "centroids": None,
     "ind_col_map": None,
-    "selected_entity": None,
     "FA_component_dict": {},
     "list_cluster_name": None,
     "list_description_cluster": None,
@@ -47,6 +46,7 @@ default_values = {
     "data_loading": False,
     "indice": 0,
     "selected_entity" : None,
+    
 }
 
 ### ---- Load data tab utilities ---- ###
