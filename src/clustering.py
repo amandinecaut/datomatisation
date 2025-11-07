@@ -73,8 +73,6 @@ class Cluster:
         list_name_cluster = []
 
         for center in centroids:
-            print("Center:")
-            print(center)
             describe_centroid = []
             for dim in np.arange(len(center)):
                 value_dim = center[dim]

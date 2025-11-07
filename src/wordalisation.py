@@ -503,7 +503,7 @@ class ClusterWordalisation(Wordalisation):
                 "content": (
                     "You are a data analyst. \n"
                     "You are going to describe some clusters. \n"
-                    "First you are going to answer some questions about the previous steps in your analysis."
+                    "First you are going to answer some questions about the previous steps in your analysis." # TO CHANGE??????
                 ),
             }
         ]
@@ -515,8 +515,8 @@ class ClusterWordalisation(Wordalisation):
             "You will be provided with a list that describes a cluster.\n"
             "Write a paragraph that describes the cluster.\n"
             "The first sentence should use varied language to give an overview of the cluster.\n"
-            "The second sentence should describe the cluster's specific strengths based on the provided list.\n"
-            "The third sentence should describe aspects in which the cluster is average and/or weak based on the provided list.\n"
+            "The second sentence should describe the cluster’s specific strengths based on the available information.\n"
+            "The third sentence should highlight areas where the cluster appears average or weak according to the same information.\n"
             "Finally, provide a concise summary of the cluster."
         )
         
@@ -563,19 +563,34 @@ class ClusterWordalisation(Wordalisation):
             # FIXME: When merging with new_training, add the other exception type
             print(f"Describe paths file not found: {e}")
 
-        # --- Add prompt messages ---
-        messages += self.get_prompt_messages()
 
         # --- Filter out non-string content ---
         messages = [m for m in messages if isinstance(m.get("content"), str)]
 
         # --- Load few-shots examples  ---
+        messages += [{
+            "role": "user",
+            "content": (
+                "Your task is to provide a description of a cluster.\n"
+                "You will receive information about the cluster center.\n"
+                "You also have example descriptions that illustrate the language style and level of detail to use.\n"
+                "For each cluster, write a concise four-sentence summary based on the available information:\n"
+                "The first sentence should give a general overview of the cluster.\n"
+                "The second sentence should describe the cluster’s strengths.\n"
+                "The third sentence should highlight areas where it is average or weak.\n"
+                "Finally, conclude with a single sentence that summarizes the overall character of the cluster.\n"
+            )
+            }]
+
         try:
             example_paths = self.tell_it_how_to_answer
             messages += self.get_messages_from_excel(example_paths)
         except FileNotFoundError as e:
             # FIXME: When merging with new_training, add the other exception type
             print(f"Example paths file not found: {e}")
+
+        # --- Add prompt messages ---
+        messages += self.get_prompt_messages()
 
         # --- Add synthesized text message ---
         messages.append(
