@@ -503,7 +503,7 @@ class ClusterWordalisation(Wordalisation):
                 "content": (
                     "You are a data analyst. \n"
                     "You are going to describe some clusters. \n"
-                    "First you are going to answer some questions about the previous steps in your analysis." # TO CHANGE??????
+                    "First, you will be provided with a set of questions and answers that give you the necessary context."
                 ),
             }
         ]
