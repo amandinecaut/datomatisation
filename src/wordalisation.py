@@ -81,6 +81,58 @@ class Wordalisation(ABC):
         #    ]
 
         #return intro
+
+
+    def get_messages_from_excel_QnA(self,paths: Union[str, List[str]],) -> List[Dict[str, str]]:
+        """
+        Turn an excel file containing user and assistant columns with str values into a list of dicts.
+
+        Arguments:
+        paths: str or list of str
+            Path to the excel file containing the user and assistant columns.
+
+        Returns:
+        List of dicts with keys "role" and "content".
+
+        """
+       
+
+        # Handle list and str paths arg
+        if isinstance(paths, str):
+            paths = [paths]
+        elif len(paths) == 0:
+            return []
+
+        _, ext = os.path.splitext(paths[0])
+        ext = ext.lower()
+
+        if ext == ".csv":
+            df = pd.read_csv(paths[0])
+            for path in paths[1:]:
+                df = pd.concat([df, pd.read_csv(path)])
+
+        elif ext in [".xls", ".xlsx"]:
+            df = pd.read_excel(paths[0])
+            for path in paths[1:]:
+                df = pd.concat([df, pd.read_excel(path)])
+        else:
+            raise ValueError(f"Unsupported file extension: {ext}")
+
+
+        if df.empty:
+            return []
+
+        # Convert to list of dicts
+        messages = []
+        for i, row in df.iterrows():
+            combined_content = f"{row['User']} {row['Assistant']}"
+            if i == 0:
+                messages.append({"role": "user", "content": combined_content})
+            else:
+                messages.append({"role": "user", "content": combined_content})
+            #messages.append({"role": "assistant", "content": row["Assistant"]})
+
+        return messages
         
     def get_messages_from_excel(self,paths: Union[str, List[str]],) -> List[Dict[str, str]]:
         """
@@ -375,7 +427,7 @@ class CreateWordalisation(Wordalisation):
         # --- Load QandA ---
         try:
             tell_it_what_it_knows_paths = self.tell_it_what_it_knows
-            messages += self.get_messages_from_excel(tell_it_what_it_knows_paths)
+            messages += self.get_messages_from_excel_QnA(tell_it_what_it_knows_paths)
         except FileNotFoundError as e:
             # FIXME: When merging with new_training, add the other exception type
             print(f"Describe paths file not found: {e}")
@@ -557,14 +609,14 @@ class ClusterWordalisation(Wordalisation):
         # --- Load QandA ---
         try:
             tell_it_what_it_knows_paths = self.tell_it_what_it_knows
-            messages += self.get_messages_from_excel(tell_it_what_it_knows_paths)
+            messages += self.get_messages_from_excel_QnA(tell_it_what_it_knows_paths)
         except FileNotFoundError as e:
             # FIXME: When merging with new_training, add the other exception type
             print(f"Describe paths file not found: {e}")
 
 
         # --- Filter out non-string content ---
-        messages = [m for m in messages if isinstance(m.get("content"), str)]
+        #messages = [m for m in messages if isinstance(m.get("content"), str)]
 
         # --- Load few-shots examples  ---
         messages += [{
