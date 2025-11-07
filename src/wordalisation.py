@@ -222,9 +222,11 @@ class CreateWordalisation(Wordalisation):
             {
                 "role": "system",
                 "content": (
-                    "You are a data analyst. "
-                    "You provide succinct and to the point explanations about the data.  "
-                    "You use the information given to you from the data and answers from user/assistant pairs to give a description."
+                    "You are an expert in interpreting and summarizing the results of complex statistical analyses. \n"
+                    "You have recently conducted a factor analysis in which you classified a set of entities—such "
+                    "as individuals, organizations, or countries—across multiple dimensions and grouped them based on shared characteristics. \n"
+                    "Your current task is to describe a specific entity in the context of this classification. \n"
+                    "Before doing so, you will answer a series of questions related to the underlying scales and clusters."
                 ),
             }
         ]
@@ -292,13 +294,10 @@ class CreateWordalisation(Wordalisation):
             top_map_list = [
              k for k, v in dictionary.items() if v in component["top"]
             ]
-            print('TOP MAP LIST:')
-            print(top_map_list)
+            
             bottom_map_list = [
              k for k, v in dictionary.items() if v in component["bottom"]
             ]
-            print('BOTTOM MAP LIST:')
-            print(bottom_map_list)  
 
             # Fast argmax / argmin using NumPy
             if value > 1 and top_map_list:
@@ -313,35 +312,6 @@ class CreateWordalisation(Wordalisation):
                 argmin_column = bottom_map_list[argmin_idx]
                 text += f"In particular, {st.session_state.selected_entity} indicates that {dictionary[argmin_column]}. "
 
-        return text
-
-
-
-    def get_description(self, indice):
-        df = self.df[list(self.FA_component_dict.keys())]
-        df = df.apply(zscore, nan_policy="omit")
-        indice = self.indice
-
-        text = ''
-        for i in st.session_state.FA_component_dict.keys():
-            component = st.session_state.FA_component_dict.get(i, {})
-            
-            if not component:  # Skip if component is missing
-                continue
-            
-            text_left, text_right = ClusterWordalisation.split_qualities(component['label'])
-            text += f"{st.session_state.selected_entity} "
-            value = df.loc[indice,i]
-    
-            if not np.isnan(value):
-                if value >= 0:
-                    text += self.describe_level(value) + text_right + '. '
-                else:
-                    text += self.describe_level(value) + text_left + '. '
-                if value > 1:
-                    text += f"In particular, {st.session_state.selected_entity} indicates that " + component["top"][0] + ". "
-                elif value < -1:
-                    text += f"In particular, {st.session_state.selected_entity} indicates that " + component["bottom"][0] + ". "
         return text
 
     def get_description_cluster_entity(self):
@@ -366,13 +336,36 @@ class CreateWordalisation(Wordalisation):
 
     def get_prompt_messages(self):
         prompt = (
-            f"Please use the statistical description enclosed with ``` to give a concise, 4 sentence summary of the entity. "
-            f"The first sentence should use varied language to give an overview of the entity. "
+            "Please use the statistical description enclosed with ``` to give a concise, 4 sentence summary of the entity. "
+            "The first sentence should use varied language to give an overview of the entity. "
             "The second sentence should describe the entity's specific strengths based on the metrics. "
             "The third sentence should describe aspects in which the entity is average and/or weak based on the statistics. "
-            "Finally, summarise exactly the entity."
+            "Finally, summarize the entity with a single concluding statement." 
         )
         return [{"role": "user", "content": prompt}]
+
+
+
+    def tell_it_what_it_knows_cluster(self):
+        cluster_name = st.session_state.list_cluster_name
+        cluster_desc = st.session_state.list_description_cluster
+
+        cluster_knowledge = "\n".join(
+            f"{name}: {desc}" for name, desc in zip(cluster_name, cluster_desc)
+        )
+
+    
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                "Here is the background knowledge about each cluster:\n"
+                f"{cluster_knowledge}\n"
+                ),
+            }
+        ]
+
+        return messages
 
 
     def setup_messages(self) -> List[Dict[str, str]]:
@@ -387,13 +380,28 @@ class CreateWordalisation(Wordalisation):
             # FIXME: When merging with new_training, add the other exception type
             print(f"Describe paths file not found: {e}")
 
-        # --- Add prompt messages ---
-        messages += self.get_prompt_messages()
+        # --- Load Clusters description ---
+        messages += self.tell_it_what_it_knows_cluster()
+        
 
         # --- Filter out non-string content ---
         messages = [m for m in messages if isinstance(m.get("content"), str)]
 
         # --- Load few-shots examples  ---
+        messages += [{
+            "role": "user",
+            "content": (
+            "Your task is to summarize a specific entity. "
+            "You will be provided with descriptions of entities from previous analyses on different datasets. "
+            "These examples illustrate the type of language you use and how you describe individuals in terms of scales and clusters."
+            "For each entity, provide a concise three-sentence summary."
+            "The first sentence should give an overview of the entity. "
+            "The second sentence should describe the entity's specific strengths based on the metrics. "
+            "The third sentence should describe aspects in which the entity is average and/or weak based on the statistics. "
+            "Finally, summarise exactly how the entity compares to others in the same position. "
+            )
+            }]
+
         try:
             example_paths = self.tell_it_how_to_answer
             messages += self.get_messages_from_excel(example_paths)
@@ -401,10 +409,13 @@ class CreateWordalisation(Wordalisation):
             # FIXME: When merging with new_training, add the other exception type
             print(f"Example paths file not found: {e}")
 
+        # --- Add prompt messages ---
+        messages += self.get_prompt_messages()
+
         # --- Add synthesized text message ---
         messages.append(
          {
-                "role": "user",
+                "role": "Assistant",
                 "content": f"Now do the same thing with the following: ```{self.synthetic_text}```",
             }
         )
@@ -458,24 +469,24 @@ class ClusterWordalisation(Wordalisation):
 
     def get_cluster_label(self, text):
 
-        msgs = {
-            "system_instruction": "You are a data analyst.",
-            "history": [
-                {
-                "role": "user",
-                "parts": (
-                    "You are going to label some clusters."
-                    "The label has to be short and clear."
-                    "The label should not have connotation negative."
-                    "The label has to be different from previous labels."
-                    "Output a label only."
-                    ),
-                },
-                ],
-            "content": {"role": "user", "parts": text},
-            }
+        msgs = { "system_instruction": "You are a data analyst.", 
+        "history": [ { 
+            "role": "user", 
+            "parts": ( 
+                "You are going to label some clusters.\n" 
+                "The label has to be short and clear.\n" 
+                "The label should not have connotation negative.\n" 
+                "The label has to be different from previous labels \n" 
+                "Output a label only." 
+                ), 
+                }, 
+                ], 
+            "content": {"role": "user", "parts": text}, }
         text_generate = self.MH.get_generate(msgs, max_output_token = 5)
-        return text_generate #.candidates[0].content.parts[0].text
+        return text_generate.lower() #.candidates[0].content.parts[0].text
+
+
+
 
     def tell_it_who_it_is(self) -> List[Dict[str, str]]:
         """
@@ -488,9 +499,9 @@ class ClusterWordalisation(Wordalisation):
             {
                 "role": "system",
                 "content": (
-                    "You are a data analyst. "
-                    "You are going to label some clusters."
-                    "First you are going to answer some questions abut the previous steps in your analysis."
+                    "You are a data analyst. \n"
+                    "You are going to describe some clusters. \n"
+                    "First you are going to answer some questions about the previous steps in your analysis."
                 ),
             }
         ]
@@ -567,7 +578,7 @@ class ClusterWordalisation(Wordalisation):
         # --- Add synthesized text message ---
         messages.append(
          {
-                "role": "user",
+                "role": "Assistant",
                 "content": f"Now do the same thing with the following: ```{self.synthetic_text}```",
             }
         )

@@ -271,7 +271,7 @@ with tabs[1]:
             elif "N" not in st.session_state:
                 right_t2.write("Select a number of factor to perform Factor Analysis")
             elif "N" in st.session_state:
-                right_t2.write("## Automated labeling")
+                right_t2.write("## Automated labelling")
                 display_results(right_t2)
 
                 left_t2.write(
@@ -408,7 +408,7 @@ with tabs[2]:
             right_t3.write("Clustering complete")
 
         # Factor selection for dimensions
-        left_t3.markdown("### Select Factors for Each Dimension")
+        left_t3.markdown("#### Selection of factors for each dimension")
         factors = [v["label"] for k, v in st.session_state.FA_component_dict.items()]
 
         if len(factors) < 2:

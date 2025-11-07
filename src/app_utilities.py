@@ -167,11 +167,9 @@ def load_map(file=None):
         if file_extension == ".json":
             map = json.load(file)
         elif file_extension in [".xlsx", ".xls"]:
-            df = pd.read_excel(file)
-            print(df)
-            
+            df = pd.read_excel(file)    
             map = dict(zip(df["Key"], df["Value"]))
-            print(map)
+            
         else:
             raise ValueError(f"Unsupported file type: {file_extension}")
 
@@ -205,9 +203,7 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
 
         principalDf = pd.DataFrame(
             data=principalComponents,
-            columns=[
-                f"Principal component {i}" for i in range(principalComponents.shape[-1])
-            ],
+            columns=[f"Factor {i+1}" for i in range(principalComponents.shape[-1])],
         )
      
 
@@ -268,9 +264,9 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
             text += "\n\nTop 5 features:\n"
             text += ", ".join(top_features)
 
-            label = get_component_labels(text)
+            label = get_component_labels(text).lower()
 
-            FA_component_dict[f"Principal component {i}"] = {
+            FA_component_dict[f"Factor {i+1}"] = {
                 "label": label,
                 "top": top_features,
                 "values_top": top_values,
@@ -299,21 +295,21 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
 def get_component_labels(text):
     MH = ModelHandler()
     msgs = {
-        "system_instruction": "You are a data analyst and scientist",
-        "history": [
-            {
-                "role": "user",
-                "parts": (
-                    "Make a label from the following texts that come from factor analysis."
-                    "The label must strictly follow the format: 'bottom features vs top features'. "
-                    "The label should be of the form x vs y, where x is one or more adjectives that describes an entity that has the bottom features and y is one or more adjectives that describes an entity that has the top features."
-                    "The label should not have connotation negative."
-                    "Output a label only."
-                ),
-            },
-            {"role": "model", "parts": "Sure!"},
-        ],
-        "content": {"role": "user", "parts": text},
+    "system_instruction": "You are a data analyst and scientist",
+    "history": [
+        {
+            "role": "user",
+            "parts": (
+                "Make a label from the following texts that come from factor analysis.\n"
+                "The label must strictly follow the format: 'bottom features vs top features'.\n"
+                "The label should be of the form x vs y, where x is one or more adjectives that describe an entity that has the bottom features, and y is one or more adjectives that describe an entity that has the top features.\n"
+                "The label should not have a negative connotation.\n"
+                "Output a label only."
+            ),
+        },
+        {"role": "model", "parts": "Sure!"},
+    ],
+    "content": {"role": "user", "parts": text}, # Note: 'text' here is a placeholder variable
     }
 
     text_generate = MH.get_generate(msgs, max_output_token = 10)
@@ -361,7 +357,6 @@ def display_results(component):
 def get_principalDf():
     return self.principalDf
 
-
 ### ---- Clustering tab utilities ---- ###
 
 # Cluster utilities
@@ -371,13 +366,8 @@ def perform_clustering(num_clusters=DEFAULT_NUM_CLUSTERS):
     else:
         num_clusters = DEFAULT_NUM_CLUSTERS
     
-    # Reinitialise session state for cluster on rerun
-    #for key in ["u_labels", "centroids", "ind_col_map", 
-    #        "list_cluster_name", "list_description_cluster"]:
-    #    st.session_state.pop(key, None)
-   
-    if "Cluster" in st.session_state.df.columns:
-        st.session_state.df.drop(columns=["Cluster"], inplace=True)
+    #if "Cluster" in st.session_state.df.columns:
+    #    st.session_state.df.drop(columns=["Cluster"], inplace=True)
 
     cluster = Cluster(
         st.session_state.df,

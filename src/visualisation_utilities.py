@@ -171,9 +171,9 @@ class ClusterVisualisation:
 
         inv_map = {st.session_state.FA_component_dict[k]["label"]: k for k in st.session_state.FA_component_dict.keys()}
 
-
         for i in st.session_state.u_labels:
-            cluster_points = st.session_state.df[st.session_state.df['Cluster'] == i]
+            #cluster_points = st.session_state.df[st.session_state.df['Cluster'] == i]
+            cluster_points = self.df[self.df['Cluster'] == i]
             #color=st.session_state.ind_col_map[i]
            
             self.fig.add_trace(
