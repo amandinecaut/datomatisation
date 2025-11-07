@@ -488,8 +488,6 @@ class ClusterWordalisation(Wordalisation):
         
         return text_generate.lower() 
 
-
-
     def tell_it_who_it_is(self) -> List[Dict[str, str]]:
         """
         Constant introduction messages for the assistant.
@@ -517,7 +515,8 @@ class ClusterWordalisation(Wordalisation):
             "The first sentence should use varied language to give an overview of the cluster.\n"
             "The second sentence should describe the cluster’s specific strengths based on the available information.\n"
             "The third sentence should highlight areas where the cluster appears average or weak according to the same information.\n"
-            "Finally, provide a concise summary of the cluster."
+            "Finally, provide a concise summary of the cluster.\n"
+            f"Now do the same thing with the following: ```{self.synthetic_text}```"
         )
         
         return [{"role": "user", "content": prompt}]
@@ -593,12 +592,12 @@ class ClusterWordalisation(Wordalisation):
         messages += self.get_prompt_messages()
 
         # --- Add synthesized text message ---
-        messages.append(
-         {
-                "role": "user",
-                "content": f"Now do the same thing with the following: ```{self.synthetic_text}```",
-            }
-        )
+       # messages.append(
+       #  {
+       #         "role": "user",
+       #         "content": f"Now do the same thing with the following: ```{self.synthetic_text}```",
+       #     }
+        #)
 
         return messages
 
