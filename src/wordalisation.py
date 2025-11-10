@@ -530,11 +530,11 @@ class ClusterWordalisation(Wordalisation):
                 { 
                 "role": "user", 
                 "parts": ( 
-                    "You are going to label some clusters.\n" 
+                    "Generate a short label for the clusters.\n" 
                     "The label is maximum 2 words.\n" 
-                    "The label should not have negative connotation.\n" 
+                    "The label must have a positive or neutral connotation. The label should not have negative connotation.\n" 
                     "The label must be different from previous labels.\n"
-                    "Output a label only." 
+                    "Output a label only — nothing else." 
                     ), 
                 }, 
                 ], 
