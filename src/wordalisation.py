@@ -257,6 +257,7 @@ class CreateWordalisation(Wordalisation):
 
         self.df = st.session_state.df
         self.FA_component_dict = st.session_state.FA_component_dict
+        
         self.indice = st.session_state.indice
         self.synthetic_text = self.tell_it_what_data_to_use()
         self.messages = self.setup_messages()
@@ -369,7 +370,8 @@ class CreateWordalisation(Wordalisation):
     def get_description_cluster_entity(self):
         indice = st.session_state.indice
         df = self.df
-        cluster_number = int(df.at[indice, 'Cluster'])
+        #cluster_number = int(df.at[indice, 'Cluster'])
+        cluster_number = int(df.loc[indice, 'Cluster'])
         cluster_name = st.session_state.list_cluster_name[cluster_number]
         cluster_desc = st.session_state.list_description_cluster[cluster_number]
         entity = st.session_state.selected_entity
@@ -380,6 +382,7 @@ class CreateWordalisation(Wordalisation):
 
 
     def tell_it_what_data_to_use(self):
+
         description = self.get_description(self.indice)
         description_cluster = self.get_description_cluster_entity()
 
@@ -528,7 +531,7 @@ class ClusterWordalisation(Wordalisation):
                 "role": "user", 
                 "parts": ( 
                     "You are going to label some clusters.\n" 
-                    "The label has to be short and clear.\n" 
+                    "The label is maximum 2 words.\n" 
                     "The label should not have negative connotation.\n" 
                     "The label must be different from previous labels.\n"
                     "Output a label only." 

@@ -191,6 +191,8 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
 
     if st.session_state.features != []:
         x = st.session_state.df_filtered.loc[:, st.session_state.features].values
+        original_index = st.session_state.df_filtered.index
+
         x = StandardScaler().fit_transform(x)
         if "cum_exp" in st.session_state:
             components = st.session_state.cum_exp
@@ -204,6 +206,7 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
         principalDf = pd.DataFrame(
             data=principalComponents,
             columns=[f"Factor {i+1}" for i in range(principalComponents.shape[-1])],
+            index=original_index,
         )
      
 
@@ -448,7 +451,8 @@ def create_QandA(text: str | None):
                 "role": "user",
                 "parts": (
                     "You have a list of each component deduced from factor analysis."
-                    "Deduce question and answer pairs, such that: the questions should be about each component, and the answers should explain them. "
+                    "For each componant of the list you deduce question and answer pairs."
+                    "The questions should be about each component, and the answers should explain them. "
                     "The question and answer are deduce from the factor analysis"
                     "The questions should be simple and the answers should be easy to understand."
                     "Make a dataframe with two columns: one column is 'User' for the question, one column is 'Assistant' for the answers"
@@ -489,6 +493,8 @@ def create_QandA(text: str | None):
 
     return QandA
 
+
+   
 def clean_QandA(QandA):
     QandA = (
         QandA.replace("data = ", "").replace("python", "").replace("```", "").strip()

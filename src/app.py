@@ -39,12 +39,12 @@ for key, value in default_values.items():
 # Add and app header
 st.title("ADA pipeline")
 
-tabs = st.tabs(["Load data", "Analysis tools", "Clustering", "View"])
+tab1, tab2, tab3, tab4 = st.tabs(["Load data", "Analysis tools", "Clustering", "View"])
 
 FA_done = False
 
 # Load Data
-with tabs[0]:
+with tab1:
 
     left_t1, right_t1 = st.columns([0.3, 0.7])
     # Left pane title
@@ -226,7 +226,7 @@ with tabs[0]:
      
 
 # "Analysis Tools"
-with tabs[1]:
+with tab2:
     if not st.session_state.get("tab1_done", False):
         st.warning("You must load your data first!")
     else:
@@ -300,7 +300,6 @@ with tabs[1]:
             right_t2.markdown("---")
             right_t2.write("## Question and Answer pairs")
 
-            
 
         if FA_done:
 
@@ -378,7 +377,7 @@ with tabs[1]:
 
 
 # Clustering
-with tabs[2]:
+with tab3:
     if not st.session_state.get("tab2_done", False):
         st.warning("You must complete the factor analysis first!")
         pass
@@ -531,7 +530,7 @@ with tabs[2]:
 
 
 # View
-with tabs[3]:
+with tab4:
     if not st.session_state.get("tab3_done", False):
         st.warning("You must complete the clustering first!")
         
