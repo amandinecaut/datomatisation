@@ -448,12 +448,12 @@ class CreateWordalisation(Wordalisation):
             "content": (
             "Your task is to summarize a specific entity.\n"
             "You will be provided with descriptions of entities from previous analyses on different datasets.\n"
-            "These examples illustrate the type of language you use and how you describe individuals in terms of scales and clusters.\n"
+            "These examples illustrate the type of language you use and how you describe entities in terms of scales and clusters.\n"
             "For each entity, provide a concise four sentence summary.\n"
-            "The first sentence should give an overview of the entity.\n "
-            "The second sentence should describe the entity's specific strengths based on the metrics.\n"
-            "The third sentence should describe aspects in which the entity is average and/or weak based on the statistics.\n"
-            "Finally, summarize the entity with a single concluding statement.\n"
+            "The first sentence should use varied language to give an overview of the entity. \n"
+            "The second sentence should describe the entity's specific strengths based on the metrics. \n"
+            "The third sentence should describe aspects in which the entity is average and/or weak based on the statistics. \n"
+            "Finally, summarize the entity with a single concluding statement. \n" 
             )
             }]
 
@@ -566,7 +566,7 @@ class ClusterWordalisation(Wordalisation):
     def get_prompt_messages(self):
         prompt = (
             "You will be provided with a list that describes a cluster.\n"
-            "Write a paragraph that describes the cluster.\n"
+            "For each cluster, write a concise four-sentence summary based on the available information:\n"
             "The first sentence should use varied language to give an overview of the cluster.\n"
             "The second sentence should describe the cluster’s specific strengths based on the available information.\n"
             "The third sentence should highlight areas where the cluster appears average or weak according to the same information.\n"
@@ -629,10 +629,10 @@ class ClusterWordalisation(Wordalisation):
                 "You will receive information about the cluster center.\n"
                 "You also have example descriptions that illustrate the language style and level of detail to use.\n"
                 "For each cluster, write a concise four-sentence summary based on the available information:\n"
-                "The first sentence should give a general overview of the cluster.\n"
-                "The second sentence should describe the cluster’s strengths.\n"
-                "The third sentence should highlight areas where it is average or weak.\n"
-                "Finally, conclude with a single sentence that summarizes the overall character of the cluster.\n"
+                "The first sentence should use varied language to give an overview of the cluster.\n"
+                "The second sentence should describe the cluster’s specific strengths based on the available information.\n"
+                "The third sentence should highlight areas where the cluster appears average or weak according to the same information.\n"
+                "Finally, provide a concise summary of the cluster.\n"
             )
             }]
 
