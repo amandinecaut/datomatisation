@@ -425,7 +425,6 @@ class CreateWordalisation(Wordalisation):
 
         return messages
 
-
 class ClusterWordalisation(Wordalisation):
 
     @property
@@ -639,8 +638,8 @@ class Clusterlabel(Wordalisation):
             "Generate a short label for the clusters.\n" 
             "The label is maximum 2 words.\n" 
             "The label must have a positive or neutral connotation. The label should not have negative connotation.\n" 
-            "The label must be different from previous labels.\n"
             "Output a label only — nothing else.\n"
+            f"{self.existing_labels_text}\n"
             f"Now do the same thing with the following: ```{self.synthetic_text}```"
         )
         
@@ -649,6 +648,16 @@ class Clusterlabel(Wordalisation):
     def tell_it_what_data_to_use(self, cluster_description):
         self.synthetic_text = cluster_description
         return self.synthetic_text 
+
+    def existing_labels(self, list_labels):
+        if not list_labels:
+            self.existing_labels_text = ''
+            return self.existing_labels_text
+        elif len(list_labels) ==1:
+            self.existing_labels_text = "The existing label is: " + list_labels[0] + ". The label must be different from previous label."
+        else:
+            self.existing_labels_text = "The existing labels are: " + ", ".join(list_labels) + ". The label must be different from previous labels."
+        return self.existing_labels_text
 
     def setup_messages(self) -> List[Dict[str, str]]:
         """Builds and returns a list of chat messages for model input."""

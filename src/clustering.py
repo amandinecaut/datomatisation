@@ -40,7 +40,7 @@ class Cluster:
 
          # Get the cluster name
         #self.list_cluster_name = self.name_the_cluster_with_centroid(self.centroids)
-        self.labelisation = Clusterlabel()
+        
         self.list_cluster_name = self.name_the_cluster(self.list_description_cluster)
 
         self.u_labels = self.df['Cluster'].unique()
@@ -68,11 +68,12 @@ class Cluster:
         return list_description_cluster
         
     def name_the_cluster(self, list_description_cluster):
+        self.labelisation = Clusterlabel()
         
         list_name_cluster = []
 
         for cluster in list_description_cluster:
-           
+            self.labelisation.existing_labels(list_name_cluster)
             self.labelisation.tell_it_what_data_to_use(cluster)
             self.labelisation.messages = self.labelisation.setup_messages()
             label = self.labelisation.stream_gpt()
