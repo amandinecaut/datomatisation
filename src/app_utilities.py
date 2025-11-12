@@ -16,6 +16,7 @@ import google.generativeai as genai
 import plotly.graph_objects as go
 from sklearn.cluster import KMeans
 from kneed import KneeLocator
+from scipy.stats import zscore
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -280,7 +281,10 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
             }
 
         st.session_state.FA_component_dict = FA_component_dict
-        st.session_state.df = principalDf
+
+      
+        st.session_state.df = principalDf.apply(zscore)
+        #st.session_state.df = principalDf
 
         #vis = Visualisation(
         #    st.session_state.df,
@@ -364,6 +368,8 @@ def get_principalDf():
 
 ### ---- Clustering tab utilities ---- ###
 
+# Cluster utilities
+
 # Find optimal number of clusters
 def find_optimal_k_elbow(X, k_min=1, k_max=10, random_state=42):
     """
@@ -401,7 +407,7 @@ def find_optimal_k_elbow(X, k_min=1, k_max=10, random_state=42):
 
     return optimal_k
 
-# Cluster utilities
+# perfom clustering
 def perform_clustering(num_clusters = DEFAULT_NUM_CLUSTERS):
     num_clusters = st.session_state.get("num_clusters", DEFAULT_NUM_CLUSTERS)
     
@@ -529,8 +535,7 @@ def create_QandA(text: str | None):
 
     return QandA
 
-
-   
+  
 def clean_QandA(QandA):
     QandA = (
         QandA.replace("data = ", "").replace("python", "").replace("```", "").strip()

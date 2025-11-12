@@ -176,6 +176,11 @@ class ClusterVisualisation:
             cluster_points = self.df[self.df['Cluster'] == i]
             #color=st.session_state.ind_col_map[i]
            
+            hovertext=(
+                f"<b>{self.list_cluster_name[i]}</b><br>" +
+                f"{dim_x}: %{{x}}<br>" +  
+                f"{dim_y}: %{{y}}<extra></extra>"
+            )
             self.fig.add_trace(
                 go.Scatter(
                 x=cluster_points.loc[:, inv_map[dim_x]],
@@ -183,6 +188,7 @@ class ClusterVisualisation:
                 mode='markers',
                 marker=dict(color=st.session_state.ind_col_map[i], size = 5, opacity=0.3),
                 #name=f'Cluster {i}'
+                hovertemplate=hovertext,
                 name = self.list_cluster_name[i]
                 )
             )
@@ -243,7 +249,11 @@ class ClusterVisualisation3D:
 
         for i in st.session_state.u_labels:
             cluster_points = st.session_state.df[st.session_state.df['Cluster'] == i]
-            #color=st.session_state.ind_col_map[i]
+            hovertext=(
+                f"<b>{self.list_cluster_name[i]}</b><br>" +
+                f"{dim_x}: %{{x}}<br>" +  
+                f"{dim_y}: %{{y}}<extra></extra>"
+            )
             self.fig.add_trace(
                 go.Scatter3d(
                 x=cluster_points.loc[:, inv_map[dim_x]],
@@ -251,6 +261,7 @@ class ClusterVisualisation3D:
                 z=cluster_points.loc[:, inv_map[dim_z]],
                 mode='markers',
                 marker=dict(color=st.session_state.ind_col_map[i], size = 5, opacity=0.3),
+                hovertemplate=hovertext,
                 name = self.list_cluster_name[i]
                 )
             )
@@ -287,11 +298,13 @@ class DistributionPlot:
         self.background = hex_to_rgb("#faf9ed")
        
         cols = [k for k in FA_label_map.keys()]
-        self.df_FA = df_FA[cols]
+        #self.df_FA = df_FA[cols]
+
         self.FA_label_map = FA_label_map
 
-        self.df_z_scores = self.get_z_scores()
-
+        #self.df_z_scores = self.get_z_scores()
+        #self.df_z_scores.rename(columns=self.FA_label_map, inplace=True)
+        self.df_z_scores = df_FA[cols]
         self.df_z_scores.rename(columns=self.FA_label_map, inplace=True)
 
         self.fig = go.Figure()
@@ -319,17 +332,19 @@ class DistributionPlot:
 
 
     def set_visualisation(self):
-        #color = st.get_option("theme.primaryColor")
-        #if color is None:
-        #    color = "#FF4B4B"
+
         colors = px.colors.qualitative.Set2
 
         
         dataframe = self.df_z_scores
+       
+        print("dataframe after rename:", dataframe.head())
+
 
         # Ensure correct order by using FA_label_map
         dataframe = dataframe[list(self.FA_label_map.values())]
         df = self.df_z_scores.iloc[0, :].to_frame().T
+      
         cols = dataframe.columns.tolist()
      
        

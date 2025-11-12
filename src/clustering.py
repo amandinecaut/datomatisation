@@ -28,6 +28,7 @@ class Cluster:
         
         kmeans = KMeans(n_clusters=st.session_state.num_clusters, init='k-means++', max_iter=100, n_init=50, random_state=42)
         # Fit and predict cluster labels
+        
         labels = kmeans.fit_predict(self.df)
         self.df['Cluster'] = labels
         # Store centroids and unique labels

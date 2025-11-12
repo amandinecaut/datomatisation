@@ -60,28 +60,6 @@ class Wordalisation(ABC):
         Returns:
         List of dicts with keys "role" and "content".
         """
-        #intro = [
-        #    {
-        #        "role": "system",
-        #        "content": (
-        #            "You are a data analysis bot. "
-        #            "You provide succinct and to the point explanations about data using data. "
-        #            "You use the information given to you from the data and answers. "
-        #            "Use earlier user/assistant pairs to give summaries of the data."
-        #        ),
-        #    },
-        #]
-        #if len(self.tell_it_what_it_knows) > 0:
-        #    intro += [
-        #        {
-        #            "role": "user",
-        #            "content": "First, could you answer some questions about the data for me?",
-        #        },
-        #        {"role": "assistant", "content": "Sure!"},
-        #    ]
-
-        #return intro
-
 
         
     def get_messages_from_excel(self,paths: Union[str, List[str]],) -> List[Dict[str, str]]:
@@ -185,8 +163,6 @@ class Wordalisation(ABC):
 
         return answer
 
-    
-
 class CreateWordalisation(Wordalisation):
 
     @property
@@ -268,7 +244,7 @@ class CreateWordalisation(Wordalisation):
 
     def get_description(self, indice):
         df = self.df[list(self.FA_component_dict.keys())]
-        df = df.apply(zscore, nan_policy="omit")
+        #df = df.apply(zscore, nan_policy="omit") # already done after the factor analysis in the perform_fa function
         indice = self.indice
 
         dictionary = st.session_state.col_mapping
@@ -357,7 +333,7 @@ class CreateWordalisation(Wordalisation):
         cluster_desc = st.session_state.list_description_cluster
 
         cluster_knowledge = "\n".join(
-            f"{name}: {desc}" for name, desc in zip(cluster_name, cluster_desc)
+            f"The cluster {name}: {desc}" for name, desc in zip(cluster_name, cluster_desc)
         )
 
     
@@ -440,7 +416,7 @@ class ClusterWordalisation(Wordalisation):
         super().__init__()
 
     def describe_level_cluster(self, value):
-        thresholds=[-3,-2,-1.5, -1, -0.5, 0.5, 1,1.5, 2,3]
+        thresholds=[-2,-1.5, -1, -0.5,-0.25,0.25, 0.5, 1,1.5, 2]
         words = [
         " extremely low on ",    
         " very low on ",         
@@ -515,11 +491,10 @@ class ClusterWordalisation(Wordalisation):
     def get_prompt_messages(self):
         prompt = (
             "You will be provided with a list that describes a cluster.\n"
-            "For each cluster, write a concise four-sentence summary based on the available information:\n"
-            "The first sentence should use varied language to give an overview of the cluster.\n"
+            "For each cluster, write a concise summary based on the available information.\n"
+            "The first sentence should give an overview of the cluster. \n"
             "The second sentence should describe the cluster’s specific strengths based on the available information.\n"
-            "The third sentence should highlight areas where the cluster appears average or weak according to the same information.\n"
-            "Finally, provide a concise summary of the cluster.\n"
+            "The third should highlight areas where the cluster has specific weaknesses based on the available information.\n"
             f"Now do the same thing with the following: ```{self.synthetic_text}```"
         )
         
@@ -575,11 +550,10 @@ class ClusterWordalisation(Wordalisation):
                 "Your task is to provide a description of a cluster.\n"
                 "You will receive information about the cluster center.\n"
                 "You also have example descriptions that illustrate the language style and level of detail to use.\n"
-                "For each cluster, write a concise four-sentence summary based on the available information:\n"
-                "The first sentence should use varied language to give an overview of the cluster.\n"
+                "For each cluster, write a concise summary based on the available information.\n"
+                "The first sentence should give an overview of the cluster. \n"
                 "The second sentence should describe the cluster’s specific strengths based on the available information.\n"
-                "The third sentence should highlight areas where the cluster appears average or weak according to the same information.\n"
-                "Finally, provide a concise summary of the cluster.\n"
+                "The third sentence should highlight areas where the cluster has specific weaknesses based on the available information.\n"
             )
             },
             {"role": "assistant",
