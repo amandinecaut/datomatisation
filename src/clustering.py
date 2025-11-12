@@ -23,8 +23,10 @@ class Cluster:
 
     def clustering(self):
         """Perform K-Means clustering and store results."""
+        #optimal_k = self.find_optimal_k_elbow(self.df)
+        #print(f"Optimal number of clusters (k) determined by Elbow Method: {optimal_k}")
         
-        kmeans = KMeans(n_clusters=self.num_clusters, init='k-means++', max_iter=100, n_init=50, random_state=42)
+        kmeans = KMeans(n_clusters=st.session_state.num_clusters, init='k-means++', max_iter=100, n_init=50, random_state=42)
         # Fit and predict cluster labels
         labels = kmeans.fit_predict(self.df)
         self.df['Cluster'] = labels
@@ -67,7 +69,6 @@ class Cluster:
         
     def name_the_cluster(self, list_description_cluster):
         
-     
         list_name_cluster = []
 
         for cluster in list_description_cluster:
@@ -107,6 +108,9 @@ class Cluster:
             text = self.desc.get_cluster_label_with_centroid(text)
             list_name_cluster.append(text)
         return list_name_cluster
+
+
+
 
 
 

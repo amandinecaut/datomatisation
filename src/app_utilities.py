@@ -14,6 +14,8 @@ from sklearn.preprocessing import StandardScaler
 from google.generativeai import GenerationConfig
 import google.generativeai as genai
 import plotly.graph_objects as go
+from sklearn.cluster import KMeans
+from kneed import KneeLocator
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -361,6 +363,43 @@ def get_principalDf():
     return self.principalDf
 
 ### ---- Clustering tab utilities ---- ###
+
+# Find optimal number of clusters
+def find_optimal_k_elbow(X, k_min=1, k_max=10, random_state=42):
+    """
+    Determines the optimal number of clusters (k) using the Elbow Method.
+    
+       Parameters
+    ----------
+     X : array-like, shape (n_samples, n_features)
+        The input data for clustering.
+    k_min : int, optional (default=1)
+        The minimum number of clusters to test.
+    k_max : int, optional (default=10)
+        The maximum number of clusters to test.
+    random_state : int, optional (default=42)
+        Random state for reproducibility.
+
+    Returns
+    -------
+    optimal_k : int
+        The estimated optimal number of clusters.
+    """
+
+    inertias = []
+    Ks = range(k_min, k_max + 1)
+
+    # Compute KMeans inertia for each k
+    for k in Ks:
+        kmeans = KMeans(n_clusters=k, random_state=random_state, n_init=10)
+        kmeans.fit(X)
+        inertias.append(kmeans.inertia_)
+
+    # Find the "elbow" point
+    kl = KneeLocator(Ks, inertias, curve="convex", direction="decreasing")
+    optimal_k = kl.elbow
+
+    return optimal_k
 
 # Cluster utilities
 def perform_clustering(num_clusters=DEFAULT_NUM_CLUSTERS):

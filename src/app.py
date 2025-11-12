@@ -390,16 +390,29 @@ with tab3:
 
         left_t3.markdown("### Clustering")
 
-        # Slider for number of clusters
-        num_clusters = left_t3.slider(
-            "Select the number of clusters",
-            min_value=2,
-            max_value=10,
-            value=app_utilities.DEFAULT_NUM_CLUSTERS,
-            step=1,
-            key="num_clusters",
-            on_change=perform_clustering,
-        )
+        # Ask user if they want to automatically find optimal k
+        use_elbow = left_t3.radio(
+            "Would you like to find the optimal number of clusters automatically?",
+            ("Yes", "No"),
+             index=1,  # Default to "No"
+            )
+
+        if use_elbow == "Yes":
+            optimal_k = app_utilities.find_optimal_k_elbow(st.session_state.df)
+            left_t3.write(f"The optimal number of clusters is {optimal_k}")
+            st.session_state.num_clusters = optimal_k
+        
+        else:
+            # Slider for number of clusters
+            num_clusters = left_t3.slider(
+                "Select the number of clusters",
+                min_value=2,
+                max_value=10,
+                value=DEFAULT_NUM_CLUSTERS,
+                step=1,
+                key="num_clusters",
+                on_change=perform_clustering,
+            )
 
         # Button to trigger clustering
         if left_t3.button("Run Clustering"):
