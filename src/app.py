@@ -406,7 +406,7 @@ with tab3:
                 "Select the number of clusters",
                 min_value=2,
                 max_value=10,
-                value=DEFAULT_NUM_CLUSTERS,
+                value=default_num_clusters,
                 step=1,
                 key="num_clusters",
                 on_change=perform_clustering,

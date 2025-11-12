@@ -402,11 +402,8 @@ def find_optimal_k_elbow(X, k_min=1, k_max=10, random_state=42):
     return optimal_k
 
 # Cluster utilities
-def perform_clustering(num_clusters=DEFAULT_NUM_CLUSTERS):
-    if "num_clusters" in st.session_state:
-        num_clusters = st.session_state.num_clusters
-    else:
-        num_clusters = DEFAULT_NUM_CLUSTERS
+def perform_clustering(num_clusters = DEFAULT_NUM_CLUSTERS):
+    num_clusters = st.session_state.get("num_clusters", DEFAULT_NUM_CLUSTERS)
     
     #if "Cluster" in st.session_state.df.columns:
     #    st.session_state.df.drop(columns=["Cluster"], inplace=True)
