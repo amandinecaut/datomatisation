@@ -309,20 +309,19 @@ class CreateWordalisation(Wordalisation):
 
     def tell_it_what_data_to_use(self):
 
-        description = self.get_description(self.indice)
-        description_cluster = self.get_description_cluster_entity()
-
-        self.synthetic_text = f"{description}\n\n{description_cluster}"
+        self.synthetic_text = self.get_description(self.indice)
         return self.synthetic_text 
 
     def get_prompt_messages(self):
         prompt = (
+            "You will describe a specific entity based on its statistical description and its cluster.\n"
+            f"{self.get_description_cluster_entity()}\n"
             "Please use the statistical description enclosed with ``` to give a concise, four sentence summary of the entity. \n"
             "The first sentence should use varied language to give an overview of the entity. \n"
             "The second sentence should describe the entity's specific strengths based on the metrics. \n"
             "The third sentence should describe aspects in which the entity is average and/or weak based on the statistics. \n"
             "Finally, summarize the entity with a single concluding statement. \n" 
-            f"Now do the same thing with the following: ```{self.synthetic_text}```"
+            f"Here is the statistical description of the entity: ```{self.synthetic_text}```"
         )
         return [{"role": "user", "content": prompt}]
 
