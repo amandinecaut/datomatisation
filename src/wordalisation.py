@@ -83,56 +83,6 @@ class Wordalisation(ABC):
         #return intro
 
 
-    def get_messages_from_excel_QnA(self,paths: Union[str, List[str]],) -> List[Dict[str, str]]:
-        """
-        Turn an excel file containing user and assistant columns with str values into a list of dicts.
-
-        Arguments:
-        paths: str or list of str
-            Path to the excel file containing the user and assistant columns.
-
-        Returns:
-        List of dicts with keys "role" and "content".
-
-        """
-       
-
-        # Handle list and str paths arg
-        if isinstance(paths, str):
-            paths = [paths]
-        elif len(paths) == 0:
-            return []
-
-        _, ext = os.path.splitext(paths[0])
-        ext = ext.lower()
-
-        if ext == ".csv":
-            df = pd.read_csv(paths[0])
-            for path in paths[1:]:
-                df = pd.concat([df, pd.read_csv(path)])
-
-        elif ext in [".xls", ".xlsx"]:
-            df = pd.read_excel(paths[0])
-            for path in paths[1:]:
-                df = pd.concat([df, pd.read_excel(path)])
-        else:
-            raise ValueError(f"Unsupported file extension: {ext}")
-
-
-        if df.empty:
-            return []
-
-        # Convert to list of dicts
-        messages = []
-        for i, row in df.iterrows():
-            combined_content = f"{row['User']} {row['Assistant']}"
-            if i == 0:
-                messages.append({"role": "user", "content": combined_content})
-            else:
-                messages.append({"role": "user", "content": combined_content})
-            #messages.append({"role": "assistant", "content": row["Assistant"]})
-
-        return messages
         
     def get_messages_from_excel(self,paths: Union[str, List[str]],) -> List[Dict[str, str]]:
         """
@@ -396,6 +346,7 @@ class CreateWordalisation(Wordalisation):
             "The second sentence should describe the entity's specific strengths based on the metrics. \n"
             "The third sentence should describe aspects in which the entity is average and/or weak based on the statistics. \n"
             "Finally, summarize the entity with a single concluding statement. \n" 
+            f"Now do the same thing with the following: ```{self.synthetic_text}```"
         )
         return [{"role": "user", "content": prompt}]
 
@@ -412,12 +363,13 @@ class CreateWordalisation(Wordalisation):
     
         messages = [
             {
-                "role": "system",
+                "role": "user",
                 "content": (
-                "Here is the background knowledge about each cluster:\n"
+                "Here’s an overview of the background knowledge about each cluster:\n"
                 f"{cluster_knowledge}\n"
                 ),
-            }
+            },
+            {"role": "assistant", "content": "Understood. I will use this information when describing entities."}
         ]
 
         return messages
@@ -430,7 +382,7 @@ class CreateWordalisation(Wordalisation):
         # --- Load QandA ---
         try:
             tell_it_what_it_knows_paths = self.tell_it_what_it_knows
-            messages += self.get_messages_from_excel_QnA(tell_it_what_it_knows_paths)
+            messages += self.get_messages_from_excel(tell_it_what_it_knows_paths)
         except FileNotFoundError as e:
             # FIXME: When merging with new_training, add the other exception type
             print(f"Describe paths file not found: {e}")
@@ -455,6 +407,9 @@ class CreateWordalisation(Wordalisation):
             "The third sentence should describe aspects in which the entity is average and/or weak based on the statistics. \n"
             "Finally, summarize the entity with a single concluding statement. \n" 
             )
+            },
+            {"role": "assistant",
+            "content": "Understood. Please provide the entity descriptions."
             }]
 
         try:
@@ -467,13 +422,6 @@ class CreateWordalisation(Wordalisation):
         # --- Add prompt messages ---
         messages += self.get_prompt_messages()
 
-        # --- Add synthesized text message ---
-        messages.append(
-         {
-                "role": "Assistant",
-                "content": f"Now do the same thing with the following: ```{self.synthetic_text}```",
-            }
-        )
 
         return messages
 
@@ -522,7 +470,9 @@ class ClusterWordalisation(Wordalisation):
 
         return text1, text2
 
-    def get_cluster_label(self, text):
+
+    
+    def get_cluster_label_with_centroid(self, text):
 
         msgs = { 
             "system_instruction": "You are a data analyst.", 
@@ -595,9 +545,11 @@ class ClusterWordalisation(Wordalisation):
             else:
                 text_dim += text_low
             describe_center.append(text_dim)
+
         text = ", ".join(describe_center)  
+        full_text = f"The cluster center can be characterised as: {text}"
             
-        return text
+        return full_text
 
     def tell_it_what_data_to_use(self, center):
         description = self.description_cluster(center)
@@ -612,14 +564,10 @@ class ClusterWordalisation(Wordalisation):
         # --- Load QandA ---
         try:
             tell_it_what_it_knows_paths = self.tell_it_what_it_knows
-            messages += self.get_messages_from_excel_QnA(tell_it_what_it_knows_paths)
+            messages += self.get_messages_from_excel(tell_it_what_it_knows_paths)
         except FileNotFoundError as e:
             # FIXME: When merging with new_training, add the other exception type
             print(f"Describe paths file not found: {e}")
-
-
-        # --- Filter out non-string content ---
-        #messages = [m for m in messages if isinstance(m.get("content"), str)]
 
         # --- Load few-shots examples  ---
         messages += [{
@@ -634,6 +582,9 @@ class ClusterWordalisation(Wordalisation):
                 "The third sentence should highlight areas where the cluster appears average or weak according to the same information.\n"
                 "Finally, provide a concise summary of the cluster.\n"
             )
+            },
+            {"role": "assistant",
+            "content": "Understood. Please provide the cluster descriptions."
             }]
 
         try:
@@ -646,17 +597,97 @@ class ClusterWordalisation(Wordalisation):
         # --- Add prompt messages ---
         messages += self.get_prompt_messages()
 
-        # --- Add synthesized text message ---
-       # messages.append(
-       #  {
-       #         "role": "user",
-       #         "content": f"Now do the same thing with the following: ```{self.synthetic_text}```",
-       #     }
-        #)
+
 
         return messages
 
+class Clusterlabel(Wordalisation):
+    @property
+    def tell_it_how_to_answer(self):
+        return [f"{self.describe_base}/few_shot_label.xlsx"] 
 
+    @property
+    def tell_it_what_it_knows(self):
+        return [f"{self.describe_base}/QandA_data.csv"]
+    
+    def __init__(self):
+        self.MH = ModelHandler()
+        super().__init__()
+
+    def tell_it_who_it_is(self) -> List[Dict[str, str]]:
+        """
+        Constant introduction messages for the assistant.
+
+        Returns:
+        List of dicts with keys "role" and "content".
+        """
+        intro = [
+            {
+                "role": "system",
+                "content": (
+                    "You are a data analyst. \n"
+                    "You are going to label clusters. \n"
+                    "First, you will be provided with a set of questions and answers that give you the necessary context."
+                ),
+            }
+        ]
+
+        return intro
+
+    def get_prompt_messages(self):
+        prompt = (
+            "Generate a short label for the clusters.\n" 
+            "The label is maximum 2 words.\n" 
+            "The label must have a positive or neutral connotation. The label should not have negative connotation.\n" 
+            "The label must be different from previous labels.\n"
+            "Output a label only — nothing else.\n"
+            f"Now do the same thing with the following: ```{self.synthetic_text}```"
+        )
+        
+        return [{"role": "user", "content": prompt}]
+    
+    def tell_it_what_data_to_use(self, cluster_description):
+        self.synthetic_text = cluster_description
+        return self.synthetic_text 
+
+    def setup_messages(self) -> List[Dict[str, str]]:
+        """Builds and returns a list of chat messages for model input."""
+        messages = self.tell_it_who_it_is()
+
+        # --- Load QandA ---
+        try:
+            tell_it_what_it_knows_paths = self.tell_it_what_it_knows
+            messages += self.get_messages_from_excel(tell_it_what_it_knows_paths)
+        except FileNotFoundError as e:
+            # FIXME: When merging with new_training, add the other exception type
+            print(f"Describe paths file not found: {e}")
+
+        # --- Load few-shots examples  ---
+        messages += [{
+            "role": "user",
+            "content": (
+                "Generate a short label for the clusters.\n" 
+                "The label is maximum 2 words.\n" 
+                "The label must have a positive or neutral connotation. The label should not have negative connotation.\n" 
+                "The label must be different from previous labels.\n"
+                "Output a label only — nothing else.\n"
+                "You will be provided with example cluster descriptions and their corresponding labels to guide you."
+            )}, 
+            {"role": "assistant",
+            "content": "Understood. Please provide the cluster descriptions."
+            }]
+
+        try:
+            example_paths = self.tell_it_how_to_answer
+            messages += self.get_messages_from_excel(example_paths)
+        except FileNotFoundError as e:
+            # FIXME: When merging with new_training, add the other exception type
+            print(f"Example paths file not found: {e}")
+
+        # --- Add prompt messages ---
+        messages += self.get_prompt_messages()
+
+        return messages
 
 class ModelHandler:
     def __init__(self, config_path=".streamlit/secrets.toml"):

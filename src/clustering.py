@@ -9,7 +9,7 @@ import numpy as np
 import plotly
 
 import wordalisation
-from wordalisation import ClusterWordalisation
+from wordalisation import ClusterWordalisation, Clusterlabel
 
 class Cluster:
     def __init__(self, df, FA_label_map, num_clusters):
@@ -32,11 +32,15 @@ class Cluster:
         self.centroids = kmeans.cluster_centers_
 
         self.desc = ClusterWordalisation() 
-
-        # Get the cluster name
-        self.list_cluster_name = self.name_the_cluster(self.centroids)
+       
         # Get the cluster description
         self.list_description_cluster = self.get_description_cluster_list(self.centroids)
+
+         # Get the cluster name
+        #self.list_cluster_name = self.name_the_cluster_with_centroid(self.centroids)
+        self.labelisation = Clusterlabel()
+        self.list_cluster_name = self.name_the_cluster(self.list_description_cluster)
+
         self.u_labels = self.df['Cluster'].unique()
 
 
@@ -61,8 +65,21 @@ class Cluster:
 
         return list_description_cluster
         
- 
-    def name_the_cluster(self, centroids):
+    def name_the_cluster(self, list_description_cluster):
+        
+     
+        list_name_cluster = []
+
+        for cluster in list_description_cluster:
+           
+            self.labelisation.tell_it_what_data_to_use(cluster)
+            self.labelisation.messages = self.labelisation.setup_messages()
+            label = self.labelisation.stream_gpt()
+
+            list_name_cluster.append(label)
+        return list_name_cluster
+
+    def name_the_cluster_with_centroid(self, centroids):
         
         list_name_dim = []
         
@@ -87,7 +104,7 @@ class Cluster:
                 describe_centroid.append(text_dim)
             text = ", ".join(describe_centroid)  
             
-            text = self.desc.get_cluster_label(text)
+            text = self.desc.get_cluster_label_with_centroid(text)
             list_name_cluster.append(text)
         return list_name_cluster
 
