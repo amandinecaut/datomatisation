@@ -245,8 +245,7 @@ with tab2:
         if left_t2.button("Factor Analysis"):
             st.session_state.analysis = "FA"
 
-        if left_t2.button("Logistic Regression"):
-            st.session_state.analysis = "LR"
+        
 
         if st.session_state.analysis == "FA":
             left_t2.markdown("### Factor Analysis")
@@ -288,18 +287,6 @@ with tab2:
 
                 expander_exp = right_t2.expander("Factors components")
                 expander_exp.write(st.session_state.components)
-
-             
-
-                
-
-        if st.session_state.analysis == "LR":
-            right_t2.markdown("---")
-            right_t2.write("## Work in progress")
-
-            right_t2.markdown("---")
-            right_t2.write("## Question and Answer pairs")
-
 
         if FA_done:
 
@@ -374,6 +361,17 @@ with tab2:
                 st.error("Failed to generate Q&A. Please check your input.")
         else:
             st.error("You must complete the Factor Analysis first!")
+        
+        
+        if left_t2.button("Logistic Regression"):
+            st.session_state.analysis = "LR"
+
+        if st.session_state.analysis == "LR":
+            right_t2.markdown("---")
+            right_t2.write("## Work in progress")
+
+            right_t2.markdown("---")
+            right_t2.write("## Question and Answer pairs")
 
 
 # Clustering
