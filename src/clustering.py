@@ -78,7 +78,7 @@ class Cluster:
             self.labelisation.messages = self.labelisation.setup_messages()
             label = self.labelisation.stream_gpt()
 
-            list_name_cluster.append(label)
+            list_name_cluster.append(label.lower())
         return list_name_cluster
 
     def name_the_cluster_with_centroid(self, centroids):
