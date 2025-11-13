@@ -732,7 +732,7 @@ class FALabel(Wordalisation):
             "The label x should be the opposite of the label y.\n"
             "The label should be different from previous labels.\n"
             "The label should not have a negative connotation.\n"
-            "Output a label only."
+            "Output a label only.\n"
             f"{self.existing_labels_text}\n"
             f"Now do the same thing with the following: ```{self.synthetic_text}```"
         )
@@ -816,7 +816,7 @@ class FALabel(Wordalisation):
                 "Output a label only."
             )}, 
             {"role": "assistant",
-            "content": "Understood. Please provide the list of factors."
+            "content": "Understood. Please provide the factor description."
             }]
 
         try:
