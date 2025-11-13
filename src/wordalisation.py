@@ -331,21 +331,34 @@ class CreateWordalisation(Wordalisation):
         cluster_name = st.session_state.list_cluster_name
         cluster_desc = st.session_state.list_description_cluster
 
-        cluster_knowledge = "\n".join(
-            f"The cluster {name}: {desc}" for name, desc in zip(cluster_name, cluster_desc)
-        )
+        #cluster_knowledge = "\n".join(
+        #    f"The cluster {name}: {desc}" for name, desc in zip(cluster_name, cluster_desc)
+        #)
 
     
         messages = [
             {
                 "role": "user",
-                "content": (
-                "Here’s an overview of the background knowledge about each cluster:\n"
-                f"{cluster_knowledge}\n"
-                ),
+                "content": "You will be provided the background knowledge about each cluster:"
             },
-            {"role": "assistant", "content": "Understood. I will use this information when describing entities."}
+            {
+                "role": "assistant",
+                "content": "Understood. I will use this information when describing entities."
+            },
+            
         ]
+        for name, desc in zip(cluster_name, cluster_desc):
+            messages.extend([
+                {
+                    "role": "user",
+                    "content": f"What is the cluster '{name}' about?"
+                },
+                {
+                    "role": "assistant",
+                    "content": f"The cluster '{name}' is described as: {desc}"
+                }
+            ])
+
 
         return messages
 
