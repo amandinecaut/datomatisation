@@ -36,6 +36,8 @@ class Wordalisation(ABC):
         #self.synthetic_text = self.tell_it_what_data_to_use()
         #self.messages = self.setup_messages()
         self._config = toml.load(".streamlit/secrets.toml")
+        
+       
 
     def tell_it_what_data_to_use(self) -> str:
         """
@@ -185,8 +187,11 @@ class CreateWordalisation(Wordalisation):
         self.FA_component_dict = st.session_state.FA_component_dict
         
         self.indice = st.session_state.indice
+        self.entity_id = st.session_state.entity_id
         self.synthetic_text = self.tell_it_what_data_to_use()
         self.messages = self.setup_messages()
+        
+        
         
         super().__init__()
 
@@ -202,9 +207,8 @@ class CreateWordalisation(Wordalisation):
                 "role": "system",
                 "content": (
                     "You are an expert in interpreting and summarizing the results of complex statistical analyses. \n"
-                    "You have recently conducted a factor analysis in which you classified a set of entities—such "
-                    "as individuals, organizations, or countries—across multiple dimensions and grouped them based on shared characteristics. \n"
-                    "Your current task is to describe a specific entity in the context of this classification. \n"
+                    f"You have recently conducted a factor analysis in which you classified a set of {self.entity_id}, in multiple dimensions and grouped them based on shared characteristics. \n"
+                    f"Your current task is to describe a specific {self.entity_id} in the context of this classification. \n"
                     "Before doing so, you will answer a series of questions related to the underlying scales and clusters."
                 ),
             }
@@ -302,7 +306,7 @@ class CreateWordalisation(Wordalisation):
         cluster_desc = st.session_state.list_description_cluster[cluster_number]
         entity = st.session_state.selected_entity
 
-        text = f"{entity} belongs to cluster {cluster_number}: {cluster_name}. The cluster has the following description: {cluster_desc}."
+        text = f"{entity} is {cluster_name}. The people that are {cluster_name} has the following description: {cluster_desc}."
 
         return text
 
@@ -314,14 +318,14 @@ class CreateWordalisation(Wordalisation):
 
     def get_prompt_messages(self):
         prompt = (
-            "You will describe a specific entity based on its statistical description and its cluster.\n"
+            f"You will describe a specific {self.entity_id} based on its statistical description and informative description.\n"
             f"{self.get_description_cluster_entity()}\n"
-            "Please use the statistical description enclosed with ``` to give a concise, four sentence summary of the entity. \n"
-            "The first sentence should use varied language to give an overview of the entity. \n"
-            "The second sentence should describe the entity's specific strengths based on the metrics. \n"
-            "The third sentence should describe aspects in which the entity is average and/or weak based on the statistics. \n"
-            "Finally, summarize the entity with a single concluding statement. \n" 
-            f"Here is the statistical description of the entity: ```{self.synthetic_text}```"
+            f"Please use the statistical description enclosed with ``` to give a concise, four sentence summary of the {self.entity_id}. \n"
+            f"The first sentence should use varied language to give an overview of the {self.entity_id}. \n"
+            f"The second sentence should describe the {self.entity_id}'s specific strengths based on the metrics. \n"
+            f"The third sentence should describe aspects in which the {self.entity_id} is average and/or weak based on the statistics. \n"
+            f"Finally, summarize the {self.entity_id} with a single concluding statement. \n" 
+            f"Here is the statistical description of the {self.entity_id}: ```{self.synthetic_text}```"
         )
         return [{"role": "user", "content": prompt}]
 
@@ -331,19 +335,15 @@ class CreateWordalisation(Wordalisation):
         cluster_name = st.session_state.list_cluster_name
         cluster_desc = st.session_state.list_description_cluster
 
-        #cluster_knowledge = "\n".join(
-        #    f"The cluster {name}: {desc}" for name, desc in zip(cluster_name, cluster_desc)
-        #)
-
     
         messages = [
             {
                 "role": "user",
-                "content": "You will be provided the background knowledge about each cluster:"
+                "content": "You will be provided the background informations"
             },
             {
                 "role": "assistant",
-                "content": "Understood. I will use this information when describing entities."
+                "content": f"Understood. I will use this information when describing {self.entity_id}."
             },
             
         ]
@@ -351,11 +351,11 @@ class CreateWordalisation(Wordalisation):
             messages.extend([
                 {
                     "role": "user",
-                    "content": f"What is the cluster '{name}' about?"
+                    "content": f"What is '{name}' about?"
                 },
                 {
                     "role": "assistant",
-                    "content": f"The cluster '{name}' is described as: {desc}"
+                    "content": f" '{name}' is described as: {desc}"
                 }
             ])
 
@@ -386,18 +386,18 @@ class CreateWordalisation(Wordalisation):
         messages += [{
             "role": "user",
             "content": (
-            "Your task is to summarize a specific entity.\n"
-            "You will be provided with descriptions of entities from previous analyses on different datasets.\n"
-            "These examples illustrate the type of language you use and how you describe entities in terms of scales and clusters.\n"
-            "For each entity, provide a concise four sentence summary.\n"
-            "The first sentence should use varied language to give an overview of the entity. \n"
-            "The second sentence should describe the entity's specific strengths based on the metrics. \n"
-            "The third sentence should describe aspects in which the entity is average and/or weak based on the statistics. \n"
-            "Finally, summarize the entity with a single concluding statement. \n" 
+            f"Your task is to summarize a specific {self.entity_id}.\n"
+            f"You will be provided with descriptions of {self.entity_id} from previous analyses on different datasets.\n"
+            f"These examples illustrate the type of language you use and how you describe {self.entity_id} in terms of scales and clusters.\n"
+            f"For each {self.entity_id}, provide a concise four sentence summary.\n"
+            f"The first sentence should use varied language to give an overview of the {self.entity_id}. \n"
+            f"The second sentence should describe the {self.entity_id}'s specific strengths based on the metrics. \n"
+            f"The third sentence should describe aspects in which the {self.entity_id} is average and/or weak based on the statistics. \n"
+            f"Finally, summarize the {self.entity_id} with a single concluding statement. \n" 
             )
             },
             {"role": "assistant",
-            "content": "Understood. Please provide the entity descriptions."
+            "content": f"Understood. Please provide the {self.entity_id} descriptions."
             }]
 
         try:
@@ -670,6 +670,153 @@ class Clusterlabel(Wordalisation):
             )}, 
             {"role": "assistant",
             "content": "Understood. Please provide the cluster descriptions."
+            }]
+
+        try:
+            example_paths = self.tell_it_how_to_answer
+            messages += self.get_messages_from_excel(example_paths)
+        except FileNotFoundError as e:
+            # FIXME: When merging with new_training, add the other exception type
+            print(f"Example paths file not found: {e}")
+
+        # --- Add prompt messages ---
+        messages += self.get_prompt_messages()
+
+        return messages
+
+class FALabel(Wordalisation):
+    @property
+    def tell_it_how_to_answer(self):
+        return [f"{self.describe_base}/few_shot_FA_label.xlsx"] 
+
+    @property
+    def tell_it_what_it_knows(self):
+        return [""]
+    
+    def __init__(self):
+        self.MH = ModelHandler()
+        self.entity_id = st.session_state.entity_id
+        super().__init__()
+
+    def tell_it_who_it_is(self) -> List[Dict[str, str]]:
+        """
+        Constant introduction messages for the assistant.
+
+        Returns:
+        List of dicts with keys "role" and "content".
+        """
+        intro = [
+            {
+                "role": "system",
+                "content": (
+                    "You are a data analyst. \n"
+                    "You did a factor analysis and now you will name the factors of the factor analysis. \n"
+                    "First, you will be provided with a set of examples."
+                ),
+            }, 
+            {                
+                "role": "assistant",
+                "content": (    
+                    "Understood. I will use the examples to guide me in naming the factors."
+                ),
+            }
+        ]
+
+        return intro
+
+    def get_prompt_messages(self):
+        prompt = (
+            "Make a label from the following texts that come from factor analysis.\n"
+            "The label must strictly follow the format: 'bottom features vs top features'.\n"
+            f"The label should be of the form x vs y, where x is one or more adjectives that describe a {self.entity_id} that has the bottom features, and y is one or more adjectives that describe a {self.entity_id} that has the top features.\n"
+            "The label x should be the opposite of the label y.\n"
+            "The label should be different from previous labels.\n"
+            "The label should not have a negative connotation.\n"
+            "Output a label only."
+            f"{self.existing_labels_text}\n"
+            f"Now do the same thing with the following: ```{self.synthetic_text}```"
+        )
+        
+        return [{"role": "user", "content": prompt}]
+    
+    def describe_level_FA(self, value):
+        thresholds=[0.30, 0.49, 0.69, 0.70]
+        words = [
+        " very weakly associated with ",  
+        " weakly associated with ",  
+        " moderately associated with ",
+        " strongly associated with ",
+        " very strongly associated with ", 
+        ]
+        return CreateWordalisation.describe(thresholds, words, abs(value))
+
+    def existing_labels(self, list_labels):
+        if not list_labels:
+            self.existing_labels_text = ''
+            return self.existing_labels_text
+        elif len(list_labels) ==1:
+            self.existing_labels_text = "The existing label is: " + list_labels[0] + ". The label must be different from previous label."
+        else:
+            self.existing_labels_text = "The existing labels are: " + ", ".join(list_labels) + ". The label must be different from previous labels."
+        return self.existing_labels_text
+    
+    def description_FA(self, FA_component_dict): 
+        text = ""
+
+
+        top_features = FA_component_dict.get("top", [])
+        top_values = FA_component_dict.get("values_top", [])
+        bottom_features = FA_component_dict.get("bottom", [])
+        bottom_values = FA_component_dict.get("values_bottom", [])
+
+        # --- TOP FEATURES (positive loadings)
+        text += "The factor is positively and"
+        descriptions = [self.describe_level_FA(value) + f"statement such that {feature}" for feature, value in zip(top_features, top_values)]
+        text += ", ".join(descriptions) + ". "
+                
+        # --- BOTTOM FEATURES (negative loadings)
+        text += "The factor is negatively and"
+        descriptions = [self.describe_level_FA(value) + f"statement such that {feature}" for feature, value in zip(bottom_features, bottom_values)]
+        text += ", ".join(descriptions) + ". "
+        print(text)
+
+
+
+        return text
+
+    def tell_it_what_data_to_use(self, FA_component_dict):
+
+        self.synthetic_text = self.description_FA(FA_component_dict)
+        return self.synthetic_text 
+
+    def existing_labels(self, list_labels):
+        if not list_labels:
+            self.existing_labels_text = ''
+            return self.existing_labels_text
+        elif len(list_labels) ==1:
+            self.existing_labels_text = "The existing label is: " + list_labels[0] + ". The label must be different from previous label."
+        else:
+            self.existing_labels_text = "The existing labels are: " + ", ".join(list_labels) + ". The label must be different from previous labels."
+        return self.existing_labels_text
+
+    def setup_messages(self) -> List[Dict[str, str]]:
+        """Builds and returns a list of chat messages for model input."""
+        messages = self.tell_it_who_it_is()
+
+        # --- Load few-shots examples  ---
+        messages += [{
+            "role": "user",
+            "content": (
+                "Make a label from the following texts that come from factor analysis.\n"
+                "The label must strictly follow the format: 'bottom features vs top features'.\n"
+                f"The label should be of the form x vs y, where x is one or more adjectives that describe a {self.entity_id} that has the bottom features, and y is one or more adjectives that describe a {self.entity_id} that has the top features.\n"
+                "The label x should be the opposite of the label y.\n"
+                "The label should be different from previous labels.\n"
+                "The label should not have a negative connotation.\n"
+                "Output a label only."
+            )}, 
+            {"role": "assistant",
+            "content": "Understood. Please provide the list of factors."
             }]
 
         try:

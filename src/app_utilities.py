@@ -6,7 +6,7 @@ from visualisation_utilities import (
     ClusterVisualisation3D,
     DistributionPlot
 )
-from wordalisation import ModelHandler, ClusterWordalisation
+from wordalisation import ModelHandler, ClusterWordalisation, FALabel
 
 from clustering import Cluster
 from sklearn.decomposition import FactorAnalysis
@@ -49,6 +49,7 @@ default_values = {
     "data_loading": False,
     "indice": 0,
     "selected_entity" : None,
+    "entity_id" : 'entity',
     
 }
 
@@ -222,16 +223,16 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
 
         # first st.session_state.N columns of components
         st.session_state.components = components[:, : st.session_state.N]
+
         for i in range(st.session_state.N):
 
-            n = 1
-            c2 = components[i] ** 2  # np.abs(components[i])
-
-            while sum(c2[np.argsort(c2)[::-1][:n]]) < threshold:
-                n += 1
-            # make n even
-            if n % 2 != 0:
-                n += 1
+            # n = 1
+            # c2 = components[i] ** 2  # np.abs(components[i])
+            # while sum(c2[np.argsort(c2)[::-1][:n]]) < threshold:
+            #     n += 1
+            # # make n even
+            # if n % 2 != 0:
+            #     n += 1
 
             # top_components = [
             #    c for c in np.argsort(c2)[::-1][:n] if components[i][c] > 0
@@ -239,6 +240,8 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
             # bottom_components = [
             #    c for c in np.argsort(c2)[::-1][:n] if components[i][c] < 0
             # ]
+
+            n = 2
 
             top_components = np.argsort(components[i])[::-1][:n]
             bottom_components = np.argsort(components[i])[:n]
@@ -265,44 +268,65 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
             # text = "Features:\n"
             # text += ",\n".join(top_features + bottom_features)
 
-            text = "Bottom 5 features:\n"
+            text = f"Bottom {n} features:\n"
             text += ", ".join(bottom_features)
-            text += "\n\nTop 5 features:\n"
+            text += f"\n\nTop {n} features:\n"
             text += ", ".join(top_features)
 
-            label = get_component_labels(text).lower()
 
             FA_component_dict[f"Factor {i+1}"] = {
-                "label": label,
+                #"label": label,
                 "top": top_features,
                 "values_top": top_values,
                 "bottom": bottom_features,
                 "values_bottom": bottom_values,
             }
 
+           
+        get_component_labels(FA_component_dict)
         st.session_state.FA_component_dict = FA_component_dict
+        print('FA_component_dict: ', st.session_state.FA_component_dict)
+        
 
       
         st.session_state.df = principalDf.apply(zscore)
         #st.session_state.df = principalDf
 
-        #vis = Visualisation(
+
+        #vis = DistributionPlot(
         #    st.session_state.df,
         #    {k: v["label"] for k, v in st.session_state.FA_component_dict.items()},
         #)
-        vis = DistributionPlot(
-            st.session_state.df,
-            {k: v["label"] for k, v in st.session_state.FA_component_dict.items()},
-        )
-        st.session_state.fig_base = vis.fig
-        st.session_state.df_z_scores = vis.df_z_scores
+        #st.session_state.fig_base = vis.fig
+        #st.session_state.df_z_scores = vis.df_z_scores
 
     else:
         st.session_state.FA_component_dict = {}
         st.session_state.df = None
 
-def get_component_labels(text):
+def get_component_labels(FA_component_dict):
+    FALabeler = FALabel()
+    list_FA_labels = []
+    for key, details in FA_component_dict.items():
+
+        FALabeler.existing_labels(list_FA_labels)
+        print('details: ', details)
+
+        FALabeler.tell_it_what_data_to_use(details)
+        FALabeler.messages = FALabeler.setup_messages()
+        label = FALabeler.stream_gpt().lower()
+
+        list_FA_labels.append(label)
+
+
+        # update the dict directly
+        FA_component_dict[key]["label"] = label
+
+    #return list_FA_labels
+
+def get_component_labels1(text):
     MH = ModelHandler()
+   
     msgs = {
     "system_instruction": "You are a data analyst and scientist",
     "history": [
@@ -320,6 +344,8 @@ def get_component_labels(text):
     ],
     "content": {"role": "user", "parts": text}, # Note: 'text' here is a placeholder variable
     }
+ 
+    st.expander("Chat transcript", expanded=False).write(msgs)
 
     text_generate = MH.get_generate(msgs, max_output_token = 10)
 
@@ -366,9 +392,86 @@ def display_results(component):
 def get_principalDf():
     return self.principalDf
 
-### ---- Clustering tab utilities ---- ###
+# Q&A utility
+def create_QandA(text: str | None):
+    """
+    Creates a dictionary of question and answer pairs based on component analysis 
+    and optional additional text.
+    """
+    MH = ModelHandler()
+    
+    # --- Generate Q&A for the component analysis ---
+    component_text = [
+        part 
+        for details in st.session_state.FA_component_dict.values() 
+        for part in ClusterWordalisation.split_qualities(details["label"])
+        ]
+           
+    msgs = {
+        "system_instruction": "You are a data analyst",
+        "history": [
+            {
+                "role": "user",
+                "parts": (
+                    "You have a list of each component deduced from factor analysis."
+                    "For each componant of the list you deduce question and answer pairs."
+                    "The questions should be about each component, and the answers should explain them. "
+                    "The question and answer are deduce from the factor analysis"
+                    "The questions should be simple and the answers should be easy to understand."
+                    "Make a dataframe with two columns: one column is 'User' for the question, one column is 'Assistant' for the answers"
+                    "Provide just the data dictionary from the code snippet, excluding imports and the DataFrame creation, without the rest of the Python script."
+                ),
+            }
+        ],
+        "content": {"role": "user", "parts": component_text},
+    }
+    
+    QandA = MH.get_generate(msgs, max_output_token = 200)
+    QandA = clean_QandA(QandA)
+    
+    # --- Generate Q&A for additional information if provided ---
+    if text is not None:
+        msgs = {
+        "system_instruction": "You are a data analyst and scientist",
+        "history": [
+            {
+                "role": "user",
+                "parts": (
+                    "You have information about the data and more context "
+                    "Deduce question and answer pairs from this text. "
+                    "Make a dataframe with two columns: one column is 'User' for the question, one column is 'Assistant. for the answers"
+                    "Provide just the data dictionary from the code snippet, excluding imports and the DataFrame creation, without the rest of the Python script."
+                ),
+            }
+        ],
+        "content": {"role": "user", "parts":  text },
+    }
+        
+        QandA2 = MH.get_generate(msgs, max_output_token = 200)
+        QandA2 = clean_QandA(QandA2)
+        
+        # Concatenate the two dictionaries
+        QandA['User'].extend(QandA2['User'])
+        QandA['Assistant'].extend(QandA2['Assistant'])
 
-# Cluster utilities
+    return QandA
+
+  
+def clean_QandA(QandA):
+    QandA = (
+        QandA.replace("data = ", "").replace("python", "").replace("```", "").strip()
+    )
+    
+    if "=" in QandA:
+        QandA = QandA.split("=", 1)[1].strip()
+
+    match = re.search(r"\{.*\}", QandA, re.DOTALL)
+    if match:
+        QandA = match.group(0)
+        
+    return ast.literal_eval(QandA)
+
+### ---- Clustering tab utilities ---- ###
 
 # Find optimal number of clusters
 def find_optimal_k_elbow(X, k_min=1, k_max=10, random_state=42):
@@ -470,85 +573,6 @@ def display_cluster_color(cluster_name, color, size=40):
     </div>
     """
     st.markdown(square_html, unsafe_allow_html=True)
-
-# Q&A utility
-def create_QandA(text: str | None):
-    """
-    Creates a dictionary of question and answer pairs based on component analysis 
-    and optional additional text.
-    """
-    MH = ModelHandler()
-    
-    # --- Generate Q&A for the component analysis ---
-    component_text = [
-        part 
-        for details in st.session_state.FA_component_dict.values() 
-        for part in ClusterWordalisation.split_qualities(details["label"])
-        ]
-           
-    msgs = {
-        "system_instruction": "You are a data analyst",
-        "history": [
-            {
-                "role": "user",
-                "parts": (
-                    "You have a list of each component deduced from factor analysis."
-                    "For each componant of the list you deduce question and answer pairs."
-                    "The questions should be about each component, and the answers should explain them. "
-                    "The question and answer are deduce from the factor analysis"
-                    "The questions should be simple and the answers should be easy to understand."
-                    "Make a dataframe with two columns: one column is 'User' for the question, one column is 'Assistant' for the answers"
-                    "Provide just the data dictionary from the code snippet, excluding imports and the DataFrame creation, without the rest of the Python script."
-                ),
-            }
-        ],
-        "content": {"role": "user", "parts": component_text},
-    }
-    
-    QandA = MH.get_generate(msgs, max_output_token = 200)
-    QandA = clean_QandA(QandA)
-    
-    # --- Generate Q&A for additional information if provided ---
-    if text is not None:
-        msgs = {
-        "system_instruction": "You are a data analyst and scientist",
-        "history": [
-            {
-                "role": "user",
-                "parts": (
-                    "You have information about the data and more context "
-                    "Deduce question and answer pairs from this text. "
-                    "Make a dataframe with two columns: one column is 'User' for the question, one column is 'Assistant. for the answers"
-                    "Provide just the data dictionary from the code snippet, excluding imports and the DataFrame creation, without the rest of the Python script."
-                ),
-            }
-        ],
-        "content": {"role": "user", "parts":  text },
-    }
-        
-        QandA2 = MH.get_generate(msgs, max_output_token = 200)
-        QandA2 = clean_QandA(QandA2)
-        
-        # Concatenate the two dictionaries
-        QandA['User'].extend(QandA2['User'])
-        QandA['Assistant'].extend(QandA2['Assistant'])
-
-    return QandA
-
-  
-def clean_QandA(QandA):
-    QandA = (
-        QandA.replace("data = ", "").replace("python", "").replace("```", "").strip()
-    )
-    
-    if "=" in QandA:
-        QandA = QandA.split("=", 1)[1].strip()
-
-    match = re.search(r"\{.*\}", QandA, re.DOTALL)
-    if match:
-        QandA = match.group(0)
-        
-    return ast.literal_eval(QandA)
 
 
 ### ---- View tab utilities ---- ###

@@ -77,6 +77,13 @@ with tab1:
         on_change=load_map,
     )
 
+    # GET ENTITY
+    with left_t1:
+        st.markdown("#### Variable name input")
+        user_input = st.text_input("Enter your variable name:", key="entity_id")
+    
+  
+
     # display the info of the data
     right_t1.markdown("### Data information")
 
@@ -202,7 +209,7 @@ with tab1:
 
 
             entity_name_radio = right_t1.radio(
-            "Does your dataset contain a column for entity names?",
+            f"Does your dataset contain a column for {st.session_state.entity_id} names?",
             options=["Yes", "No"],
             index=1,  # default to "No"
             key="entity_radio",
@@ -213,14 +220,14 @@ with tab1:
             else:
                 if st.session_state.ignore_cols:
                     selected_from_ignore = right_t1.selectbox(
-                        "Pick the column to use for entity names",
+                        f"Pick the column to use for {st.session_state.entity_id} names",
                         st.session_state.ignore_cols,
                         key="selected_from_ignore",
                     )
 
                     # store it in session_state
                     st.session_state["col_name"] = selected_from_ignore
-                    expander_col_name = right_t1.expander("Show the column used for the entity names")
+                    expander_col_name = right_t1.expander(f"Show the column used for the {st.session_state.entity_id} names")
                     #expander_col_name.write(st.session_state.df_full[[selected_from_ignore]])
                     expander_col_name.write(st.session_state.df_full.loc[st.session_state.df_filtered.index, [selected_from_ignore]])
      
@@ -554,7 +561,7 @@ with tab4:
             
 
         if col_name is None:
-            option_labels = [f"Entity №{i}" for i, _ in enumerate(option_row)]
+            option_labels = [f"{st.session_state.entity_id.capitalize()} №{i}" for i, _ in enumerate(option_row)]
             
         else: 
             option_labels = st.session_state.df_full.loc[st.session_state.df_filtered.index, selected_from_ignore] 
