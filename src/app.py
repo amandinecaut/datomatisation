@@ -324,25 +324,22 @@ with tab2:
             )
             
             if right_t2.button("Generate Q&A", disabled=generate_disabled):
+                
                 QandA = create_QandA(text)
 
-                if QandA and "User" in QandA and "Assistant" in QandA:
+                if isinstance(QandA, pd.DataFrame) and {"User", "Assistant"}.issubset(QandA.columns):
                     # Display Q&A
-                    for i, (q, a) in enumerate(
-                        zip(QandA["User"], QandA["Assistant"]), start=1
-                    ):
-                        right_t2.markdown(f"### **Question {i}:** {q}")
-                        right_t2.markdown(f"**Answer:** {a}")
+                    for i, row in QandA.iterrows():
+                        right_t2.markdown(f"### **Question {i+1}:** {row['User']}")
+                        right_t2.markdown(f"**Answer:** {row['Assistant']}")
                         right_t2.write("\n")
 
-                # Save Q&A as CSV
-                QandA_df = pd.DataFrame(QandA)
                 # Path to save the CSV
                 QandA_path = "./data/describe/QandA_data.csv"
                 # Ensure the folder exists
                 os.makedirs(os.path.dirname(QandA_path), exist_ok=True)
                 # Save the DataFrame as a CSV file
-                QandA_df.to_csv(QandA_path, index=False)
+                QandA.to_csv(QandA_path, index=False)
 
                 st.success("Q&A generated and saved!")
 
@@ -591,9 +588,7 @@ with tab4:
                 
             st.session_state['indice'] = indice
 
-            #print(st.session_state.df[st.session_state.df.index == indice])
-                
-      
+
 
             st.markdown("# Wordalisation")   
 
@@ -614,8 +609,6 @@ with tab4:
                     visible=False,
                 )
                 wordalisation = CreateWordalisation()
-                #description.tell_it_what_data_to_use()
-                #print("synthesized text:", description.synthetic_text)
                 summary = wordalisation.stream_gpt()
                 st.session_state.entity_description = summary
                 chat.add_message(summary)

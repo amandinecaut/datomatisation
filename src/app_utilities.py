@@ -6,7 +6,7 @@ from visualisation_utilities import (
     ClusterVisualisation3D,
     DistributionPlot
 )
-from wordalisation import ModelHandler, ClusterWordalisation, FALabel
+from wordalisation import ModelHandler, ClusterWordalisation, FALabel, QandAWordalisation,QandAWordalisation_from_text
 
 from clustering import Cluster
 from sklearn.decomposition import FactorAnalysis
@@ -20,6 +20,7 @@ from scipy.stats import zscore
 import streamlit as st
 import pandas as pd
 import numpy as np
+import itertools
 import openai
 import json
 import ast
@@ -285,20 +286,20 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
            
         get_component_labels(FA_component_dict)
         st.session_state.FA_component_dict = FA_component_dict
-        print('FA_component_dict: ', st.session_state.FA_component_dict)
         
 
-      
-        st.session_state.df = principalDf.apply(zscore)
+        
+        st.session_state.df = principalDf.apply(zscore, nan_policy="omit")
+    
         #st.session_state.df = principalDf
 
 
-        #vis = DistributionPlot(
-        #    st.session_state.df,
-        #    {k: v["label"] for k, v in st.session_state.FA_component_dict.items()},
-        #)
-        #st.session_state.fig_base = vis.fig
-        #st.session_state.df_z_scores = vis.df_z_scores
+        vis = DistributionPlot(
+            st.session_state.df,
+            {k: v["label"] for k, v in st.session_state.FA_component_dict.items()},
+        )
+        st.session_state.fig_base = vis.fig
+        st.session_state.df_z_scores = vis.df_z_scores
 
     else:
         st.session_state.FA_component_dict = {}
@@ -307,49 +308,17 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
 def get_component_labels(FA_component_dict):
     FALabeler = FALabel()
     list_FA_labels = []
+
     for key, details in FA_component_dict.items():
-
         FALabeler.existing_labels(list_FA_labels)
-        print('details: ', details)
-
         FALabeler.tell_it_what_data_to_use(details)
         FALabeler.messages = FALabeler.setup_messages()
         label = FALabeler.stream_gpt().lower()
 
         list_FA_labels.append(label)
-
-
+        
         # update the dict directly
         FA_component_dict[key]["label"] = label
-
-    #return list_FA_labels
-
-def get_component_labels1(text):
-    MH = ModelHandler()
-   
-    msgs = {
-    "system_instruction": "You are a data analyst and scientist",
-    "history": [
-        {
-            "role": "user",
-            "parts": (
-                "Make a label from the following texts that come from factor analysis.\n"
-                "The label must strictly follow the format: 'bottom features vs top features'.\n"
-                "The label should be of the form x vs y, where x is one or more adjectives that describe an entity that has the bottom features, and y is one or more adjectives that describe an entity that has the top features.\n"
-                "The label should not have a negative connotation.\n"
-                "Output a label only."
-            ),
-        },
-        {"role": "model", "parts": "Sure!"},
-    ],
-    "content": {"role": "user", "parts": text}, # Note: 'text' here is a placeholder variable
-    }
- 
-    st.expander("Chat transcript", expanded=False).write(msgs)
-
-    text_generate = MH.get_generate(msgs, max_output_token = 10)
-
-    return text_generate
 
 def display_results(component):
     results_dict = st.session_state.FA_component_dict
@@ -389,11 +358,108 @@ def display_results(component):
                 f"- ({results_dict[key]['values_bottom'][i]}) {results_dict[key]['bottom'][i]}"
             )
 
-def get_principalDf():
-    return self.principalDf
+
 
 # Q&A utility
+
 def create_QandA(text: str | None):
+    dictionary = st.session_state.FA_component_dict
+    QandA = QandAWordalisation()
+    list_QandA = []
+    for key, details in  dictionary.items():
+        QandA.tell_it_what_data_to_use(dictionary[key]["label"])
+        QandA.messages = QandA.setup_messages()
+        list_QandA.append(QandA.stream_gpt())
+
+    if text is not None:
+        QandA_text = QandAWordalisation_from_text()
+        QandA_text.tell_it_what_data_to_use(text)
+        QandA_text.messages = QandA_text.setup_messages()
+        list_QandA.append(QandA_text.stream_gpt())
+
+    cleaned_list = []
+    print(list_QandA)
+    # # for GEMINI: 
+    # for item in list_QandA:
+    #     # Remove ```json, ```, and leading/trailing whitespace
+    #     cleaned = re.sub(r"```json|```", "", item).strip()
+    #     # Convert escaped newlines \n into real newlines
+    #     cleaned = cleaned.encode("utf-8").decode("unicode_escape")
+    #     # Parse JSON
+    #     parsed = json.loads(cleaned)
+    #     cleaned_list.append(parsed)
+
+    cleaned = clean_qanda_list(list_QandA)
+    print('CLEAN')
+    print(cleaned)
+    print(json.dumps(cleaned, indent=2))
+
+
+
+    # cleaned_list = []
+
+    # json_pattern = re.compile(r"\{.*\}", re.DOTALL)
+
+    # for item in list_QandA:
+
+    #     # Remove triple backticks
+    #     no_ticks = re.sub(r"```json|```", "", item).strip()
+
+    #     # Extract JSON block only
+    #     match = json_pattern.search(no_ticks)
+    #     if not match:
+    #         raise ValueError(f"No JSON object found in:\n{item}")
+
+    #     cleaned = match.group(0)
+
+    #     # Decode escaped characters
+    #     cleaned = cleaned.replace("\\n", "\n").replace("\\t", "\t")
+
+    #     # Final parse
+    #     try:
+    #         parsed = json.loads(cleaned)
+    #     except json.JSONDecodeError as e:
+    #         raise ValueError(f"JSON error in string:\n{cleaned}") from e
+
+    #     cleaned_list.append(parsed)
+
+    
+    return qa_to_dataframe(cleaned_list)
+        
+
+def clean_qanda_list(raw_list):
+    cleaned_output = []
+
+    # Regex to capture one question + one answer at a time
+    pattern = re.compile(
+        r"\*\*Question:\*\*\s*(.*?)\s*"
+        r"\*\*Answer:\*\*\s*(.*?)(?=\s*\*\*Question:\*\*|\Z)",
+        re.DOTALL
+    )
+
+    for block in raw_list:
+
+        # Find all individual Q/A pairs inside the block
+        matches = pattern.findall(block)
+
+        for q, a in matches:
+            # Remove markdown bold and separators
+            q = q.replace("**", "").replace("---", "").strip()
+            a = a.replace("**", "").replace("---", "").strip()
+
+            # Replace line breaks inside with spaces
+            q = " ".join(q.split())
+            a = " ".join(a.split())
+
+            cleaned_output.append({
+                'Question': q,
+                'Answer': a
+            })
+
+    return cleaned_output
+
+
+def create_QandA2(text: str | None):
     """
     Creates a dictionary of question and answer pairs based on component analysis 
     and optional additional text.
@@ -456,6 +522,27 @@ def create_QandA(text: str | None):
 
     return QandA
 
+def qa_to_dataframe(qa_list):
+    """
+    Convert a list of question-answer pairs into a pandas DataFrame 
+    with columns 'user' (questions) and 'assistant' (answers).
+
+    Expected input format:
+    [
+        {"Question": "text", "Answer": "text"},
+        ...
+    ]
+    """
+    rows = []
+    
+    for item in itertools.chain.from_iterable(qa_list):
+        # Normalise keys to handle slight variations like "Anwer"
+        question = item.get("Question") or item.get("question")
+        answer   = item.get("Answer") or item.get("Anwer") or item.get("answer")
+        
+        rows.append({"User": question, "Assistant": answer})
+    
+    return pd.DataFrame(rows)
   
 def clean_QandA(QandA):
     QandA = (
@@ -581,7 +668,8 @@ def display_cluster_color(cluster_name, color, size=40):
 def add_to_fig():
 
     ind = st.session_state.indice
-    df = st.session_state.df_z_scores.iloc[ind, :].to_frame().T
+    #df = st.session_state.df_z_scores.iloc[ind, :].to_frame().T
+    df = st.session_state.df.iloc[ind, :].to_frame().T
     
     color = st.get_option("theme.primaryColor")
     if color is None:

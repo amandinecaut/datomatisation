@@ -337,8 +337,7 @@ class DistributionPlot:
 
         
         dataframe = self.df_z_scores
-       
-        print("dataframe after rename:", dataframe.head())
+
 
 
         # Ensure correct order by using FA_label_map

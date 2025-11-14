@@ -778,9 +778,6 @@ class FALabel(Wordalisation):
         text += "The factor is negatively and"
         descriptions = [self.describe_level_FA(value) + f"statement such that {feature}" for feature, value in zip(bottom_features, bottom_values)]
         text += ", ".join(descriptions) + ". "
-        print(text)
-
-
 
         return text
 
@@ -788,16 +785,6 @@ class FALabel(Wordalisation):
 
         self.synthetic_text = self.description_FA(FA_component_dict)
         return self.synthetic_text 
-
-    def existing_labels(self, list_labels):
-        if not list_labels:
-            self.existing_labels_text = ''
-            return self.existing_labels_text
-        elif len(list_labels) ==1:
-            self.existing_labels_text = "The existing label is: " + list_labels[0] + ". The label must be different from previous label."
-        else:
-            self.existing_labels_text = "The existing labels are: " + ", ".join(list_labels) + ". The label must be different from previous labels."
-        return self.existing_labels_text
 
     def setup_messages(self) -> List[Dict[str, str]]:
         """Builds and returns a list of chat messages for model input."""
@@ -817,6 +804,182 @@ class FALabel(Wordalisation):
             )}, 
             {"role": "assistant",
             "content": "Understood. Please provide the factor description."
+            }]
+
+        try:
+            example_paths = self.tell_it_how_to_answer
+            messages += self.get_messages_from_excel(example_paths)
+        except FileNotFoundError as e:
+            # FIXME: When merging with new_training, add the other exception type
+            print(f"Example paths file not found: {e}")
+
+        # --- Add prompt messages ---
+        messages += self.get_prompt_messages()
+
+        return messages
+
+class QandAWordalisation(Wordalisation):
+    @property
+    def tell_it_how_to_answer(self):
+        return [f"{self.describe_base}/few_shot_QandA.xlsx"] 
+
+    @property
+    def tell_it_what_it_knows(self):
+        return [""]
+    
+    def __init__(self):
+        self.MH = ModelHandler()
+        self.entity_id = st.session_state.entity_id
+        super().__init__()
+
+    def tell_it_who_it_is(self) -> List[Dict[str, str]]:
+        """
+        Constant introduction messages for the assistant.
+
+        Returns:
+        List of dicts with keys "role" and "content".
+        """
+        intro = [
+            {
+                "role": "system",
+                "content": (
+                    "You are a data analyst. \n"
+                    "You did a factor analysis and now you will generate questions and answers pairs from the deduced factors. \n"
+                    "First, you will be provided with a set of examples."
+                ),
+            }, 
+            {                
+                "role": "assistant",
+                "content": (    
+                    "Understood. I will use the examples to guide me to generate the questions and answers pairs."
+                ),
+            }
+        ]
+
+        return intro
+
+    def get_prompt_messages(self):
+        prompt = (
+            "You have a list of each component deduced from factor analysis."
+            "For each componant of the list you deduce question and answer pairs."
+            "The questions should be about each component, and the answers should explain them. "
+            "The question and answer are deduce from the factor analysis"
+            "The questions should be simple and the answers should be easy to understand."
+            "The output should be in the exact format as in the examples"
+            f"Now do the same thing with the following: ```{self.synthetic_text}```"
+        )
+        
+        return [{"role": "user", "content": prompt}]
+    
+
+    def tell_it_what_data_to_use(self, FA_list_label):
+
+        self.synthetic_text = FA_list_label
+        return self.synthetic_text 
+
+    def setup_messages(self) -> List[Dict[str, str]]:
+        """Builds and returns a list of chat messages for model input."""
+        messages = self.tell_it_who_it_is()
+
+        # --- Load few-shots examples  ---
+        messages += [{
+            "role": "user",
+            "content": (
+                "You have a list of each component deduced from factor analysis."
+                "For each componant of the list you deduce question and answer pairs."
+                "The questions should be about each component, and the answers should explain them. "
+                "The question and answer are deduce from the factor analysis"
+                "The questions should be simple and the answers should be easy to understand."
+                )}, 
+            {"role": "assistant",
+            "content": "Understood. Please provide the list of factors's label."
+            }]
+
+        try:
+            example_paths = self.tell_it_how_to_answer
+            messages += self.get_messages_from_excel(example_paths)
+        except FileNotFoundError as e:
+            # FIXME: When merging with new_training, add the other exception type
+            print(f"Example paths file not found: {e}")
+
+        # --- Add prompt messages ---
+        messages += self.get_prompt_messages()
+
+        return messages
+
+class QandAWordalisation_from_text(Wordalisation):
+    @property
+    def tell_it_how_to_answer(self):
+        return [f"{self.describe_base}/few_shot_QandA_from_text.xlsx"] 
+
+    @property
+    def tell_it_what_it_knows(self):
+        return [""]
+    
+    def __init__(self):
+        self.MH = ModelHandler()
+        self.entity_id = st.session_state.entity_id
+        super().__init__()
+
+    def tell_it_who_it_is(self) -> List[Dict[str, str]]:
+        """
+        Constant introduction messages for the assistant.
+
+        Returns:
+        List of dicts with keys "role" and "content".
+        """
+        intro = [
+            {
+                "role": "system",
+                "content": (
+                    "You are a data analyst. \n"
+                    "You did a factor analysis and now you will generate questions and answers pairs. \n"
+                    "You have extra information provided, the questions and answers pairs are from this text"
+                    "First, you will be provided with a set of examples."
+                ),
+            }, 
+            {                
+                "role": "assistant",
+                "content": (    
+                    "Understood. I will use the examples to guide me to generate the questions and answers pairs."
+                ),
+            }
+        ]
+
+        return intro
+
+    def get_prompt_messages(self):
+        prompt = (
+            "You have an informative text."
+            "You deduce question and answer pairs about that text."
+            "The questions should be about the text, and the answers should explain them. "
+            "The questions should be simple and the answers should be easy to understand."
+            f"Now do the same thing with the following: ```{self.synthetic_text}```"
+        )
+        
+        return [{"role": "user", "content": prompt}]
+    
+
+    def tell_it_what_data_to_use(self, FA_list_label):
+
+        self.synthetic_text = FA_list_label
+        return self.synthetic_text 
+
+    def setup_messages(self) -> List[Dict[str, str]]:
+        """Builds and returns a list of chat messages for model input."""
+        messages = self.tell_it_who_it_is()
+
+        # --- Load few-shots examples  ---
+        messages += [{
+            "role": "user",
+            "content": (
+                "You have an informative text."
+                "You deduce question and answer pairs about that text."
+                "The questions should be about the text, and the answers should explain them. "
+                "The questions should be simple and the answers should be easy to understand."
+                )}, 
+            {"role": "assistant",
+            "content": "Understood. Please provide the text."
             }]
 
         try:
