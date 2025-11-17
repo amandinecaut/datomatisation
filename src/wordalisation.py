@@ -453,8 +453,6 @@ class ClusterWordalisation(Wordalisation):
 
         return text1, text2
 
-
-    
     def get_cluster_label_with_centroid(self, text):
 
         msgs = { 
@@ -705,8 +703,8 @@ class FALabel(Wordalisation):
             {
                 "role": "system",
                 "content": (
-                    "You are a data analyst. \n"
-                    "You did a factor analysis and now you will name the factors of the factor analysis. \n"
+                    "You are an expert data analyst. \n"
+                    "Your task is to name factors resulting from a factor analysis based on the analysis. \n"
                     "First, you will be provided with a set of examples."
                 ),
             }, 
