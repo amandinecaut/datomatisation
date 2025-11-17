@@ -417,7 +417,7 @@ class ClusterWordalisation(Wordalisation):
 
     @property
     def tell_it_what_it_knows(self):
-        return [f"{self.describe_base}/QandA_data.csv"]
+        return [f"{self.describe_base}/generate/QandA_data.csv"]
 
     def __init__(self):
         self.MH = ModelHandler()
@@ -539,8 +539,12 @@ class ClusterWordalisation(Wordalisation):
 
     def setup_messages(self) -> List[Dict[str, str]]:
         """Builds and returns a list of chat messages for model input."""
+
+        # ---- Tell it who it is ----
         messages = self.tell_it_who_it_is()
 
+        # ---- Tell it what it knows ----
+        messages += self.get_messages_from_excel([f"{self.describe_base}/generate/tell_it_what_it_knows.csv"])
         # --- Load QandA ---
         try:
             tell_it_what_it_knows_paths = self.tell_it_what_it_knows
@@ -549,11 +553,12 @@ class ClusterWordalisation(Wordalisation):
             # FIXME: When merging with new_training, add the other exception type
             print(f"Describe paths file not found: {e}")
 
+        # -----Tell it how to answer ----
         # --- Load few-shots examples  ---
         messages += [{
             "role": "user",
             "content": (
-                "Your task is to provide a description of a cluster.\n"
+                "Now your task is to provide a description of a cluster.\n"
                 "You will receive information about the cluster center.\n"
                 "You also have example descriptions that illustrate the language style and level of detail to use.\n"
                 "For each cluster, write a concise summary based on the available information.\n"
@@ -572,7 +577,8 @@ class ClusterWordalisation(Wordalisation):
         except FileNotFoundError as e:
             # FIXME: When merging with new_training, add the other exception type
             print(f"Example paths file not found: {e}")
-
+        
+        # ---- Tell it what data to use ----
         # --- Add prompt messages ---
         messages += self.get_prompt_messages()
 
@@ -722,32 +728,38 @@ class FALabel(Wordalisation):
         prompt = (
             "Make a label from the following texts that come from factor analysis.\n"
             "The label must strictly follow the format: 'bottom features vs top features'.\n"
-            f"The label should be of the form x vs y, where x is one or more adjectives that describe a {self.entity_id} that has the bottom features, and y is one or more adjectives that describe a {self.entity_id} that has the top features.\n"
+            f"The label should be of the form x vs y, where x is one adjective that describe a {self.entity_id} that has the bottom features, and y is one adjective that describe a {self.entity_id} that has the top features.\n"
             "The label x should be the opposite of the label y.\n"
-            "The label should be different from previous labels.\n"
             "The label should not have a negative connotation.\n"
             "Output a label only.\n"
-            f"{self.existing_labels_text}\n"
-            f"Now do the same thing with the following: ```{self.synthetic_text}```"
         )
+        if self.existing_labels_text != "": 
+            prompt += f"{self.existing_labels_text}\n"
+
+        prompt += f"Now do the same thing with the following: ```{self.synthetic_text}```"
+        
         
         return [{"role": "user", "content": prompt}]
     
     def describe_level_FA(self, value):
-        thresholds=[0.30, 0.49, 0.69, 0.70]
+        thresholds=[0.30, 0.49, 0.59, 0.70]
+        if value > 0: 
+            text = 'positively'
+        else: 
+            text = 'negatively'
+
         words = [
-        " very weakly associated with ",  
-        " weakly associated with ",  
-        " moderately associated with ",
-        " strongly associated with ",
-        " very strongly associated with ", 
+        f" very weakly {text} associated with ",  
+        f" weakly {text} associated with ",  
+        f" moderately {text} associated with ",
+        f" strongly {text} associated with ",
+        f" very strongly {text} associated with ", 
         ]
         return CreateWordalisation.describe(thresholds, words, abs(value))
 
     def existing_labels(self, list_labels):
         if not list_labels:
             self.existing_labels_text = ''
-            return self.existing_labels_text
         elif len(list_labels) ==1:
             self.existing_labels_text = "The existing label is: " + list_labels[0] + ". The label must be different from previous label."
         else:
@@ -764,12 +776,12 @@ class FALabel(Wordalisation):
         bottom_values = FA_component_dict.get("values_bottom", [])
 
         # --- TOP FEATURES (positive loadings)
-        text += "The factor is positively and"
+        text += "The factor is described as"
         descriptions = [self.describe_level_FA(value) + f"statement such that {feature}" for feature, value in zip(top_features, top_values)]
         text += ", ".join(descriptions) + ". "
                 
         # --- BOTTOM FEATURES (negative loadings)
-        text += "The factor is negatively and"
+        text += "The factor is described as"
         descriptions = [self.describe_level_FA(value) + f"statement such that {feature}" for feature, value in zip(bottom_features, bottom_values)]
         text += ", ".join(descriptions) + ". "
 
@@ -790,9 +802,8 @@ class FALabel(Wordalisation):
             "content": (
                 "Make a label from the following texts that come from factor analysis.\n"
                 "The label must strictly follow the format: 'bottom features vs top features'.\n"
-                f"The label should be of the form x vs y, where x is one or more adjectives that describe a {self.entity_id} that has the bottom features, and y is one or more adjectives that describe a {self.entity_id} that has the top features.\n"
+                f"The label should be of the form x vs y, where x is one adjective that describe a {self.entity_id} that has the bottom features, and y is one adjective that describe a {self.entity_id} that has the top features.\n"
                 "The label x should be the opposite of the label y.\n"
-                "The label should be different from previous labels.\n"
                 "The label should not have a negative connotation.\n"
                 "Output a label only."
             )}, 
@@ -819,7 +830,7 @@ class QandAWordalisation(Wordalisation):
 
     @property
     def tell_it_what_it_knows(self):
-        return [""]
+        return [f"{self.describe_base}/generate/tell_it_what_it_knows.csv"]
     
     def __init__(self):
         self.MH = ModelHandler()
@@ -837,15 +848,15 @@ class QandAWordalisation(Wordalisation):
             {
                 "role": "system",
                 "content": (
-                    "You are a data analyst. \n"
-                    "You did a factor analysis and now you will generate questions and answers pairs from the deduced factors. \n"
-                    "First, you will be provided with a set of examples."
+                    "You are a data analyst expert. \n"
+                    "You performed a factor analysis, and now you will generate a short summary of each deduced factor.\n"
+                    "First, to gain a better understanding, you will be provided with a description of each factor that you deduced from the factor analysis."
                 ),
             }, 
             {                
                 "role": "assistant",
                 "content": (    
-                    "Understood. I will use the examples to guide me to generate the questions and answers pairs."
+                    "Understood. I will use the description to guide me to generate the short summary."
                 ),
             }
         ]
@@ -854,12 +865,12 @@ class QandAWordalisation(Wordalisation):
 
     def get_prompt_messages(self):
         prompt = (
-            "You have a list of each component deduced from factor analysis."
-            "For each componant of the list you deduce question and answer pairs."
-            "The questions should be about each component, and the answers should explain them. "
-            "The question and answer are deduce from the factor analysis"
-            "The questions should be simple and the answers should be easy to understand."
-            "The output should be in the exact format as in the examples"
+            "Now you need to write a short summary of each factor analysis component.\n"
+            "You will be provided with each component deduced from factor analysis.\n"
+            "The summary should explain only the component provided.\n"
+            "The summary is based on factor analysis.\n"
+            "The summary should be easy to understand.\n"
+            "Output only the summary.\n"
             f"Now do the same thing with the following: ```{self.synthetic_text}```"
         )
         
@@ -875,18 +886,28 @@ class QandAWordalisation(Wordalisation):
         """Builds and returns a list of chat messages for model input."""
         messages = self.tell_it_who_it_is()
 
+        # --- Load what it knows from the factor analysis ---
+        try:
+            tell_it_what_it_knows_paths = self.tell_it_what_it_knows
+            messages += self.get_messages_from_excel(tell_it_what_it_knows_paths)
+        except FileNotFoundError as e:
+            # FIXME: When merging with new_training, add the other exception type
+            print(f"Describe paths file not found: {e}")
+
         # --- Load few-shots examples  ---
         messages += [{
             "role": "user",
             "content": (
-                "You have a list of each component deduced from factor analysis."
-                "For each componant of the list you deduce question and answer pairs."
-                "The questions should be about each component, and the answers should explain them. "
-                "The question and answer are deduce from the factor analysis"
-                "The questions should be simple and the answers should be easy to understand."
+                "Now you need to write a short summary of each factor analysis component.\n"
+                "You will be provided with each component deduced from factor analysis.\n"
+                "The summary should explain only the component provided.\n"
+                "The summary is based on factor analysis.\n"
+                "The summary should be easy to understand.\n"
+                "Output only the summary.\n"
+                "First, here are some examples to guide you on the intended tone."
                 )}, 
             {"role": "assistant",
-            "content": "Understood. Please provide the list of factors's label."
+            "content": "Understood!"
             }]
 
         try:
@@ -929,13 +950,13 @@ class QandAWordalisation_from_text(Wordalisation):
                     "You are a data analyst. \n"
                     "You did a factor analysis and now you will generate questions and answers pairs. \n"
                     "You have extra information provided, the questions and answers pairs are from this text"
-                    "First, you will be provided with a set of examples."
+                    "First, you will be provided with a set of examples to show you the output format."
                 ),
             }, 
             {                
                 "role": "assistant",
                 "content": (    
-                    "Understood. I will use the examples to guide me to generate the questions and answers pairs."
+                    "Understood. I will use the examples to guide me to generate the output format for the questions and answers pairs."
                 ),
             }
         ]

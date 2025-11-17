@@ -24,7 +24,7 @@ from embeddings import Embeddings, embed
 st.set_page_config(layout="wide")
 
 
-default_cum_exp, default_sum_threshold, default_max_components, default_num_clusters = (
+default_cum_exp, default_threshold, default_max_components, default_num_clusters = (
     get_defaults()
 )
 
@@ -207,9 +207,9 @@ with tab1:
             expander_map.write(st.session_state.col_mapping)
             st.session_state.tab1_done = True
 
-
+            article = choose_article(st.session_state.entity_id)
             entity_name_radio = right_t1.radio(
-            f"Does your dataset contain a column for {st.session_state.entity_id} names?",
+            f"Does your dataset contain a column for {article} {st.session_state.entity_id} name?",
             options=["Yes", "No"],
             index=1,  # default to "No"
             key="entity_radio",
@@ -220,7 +220,7 @@ with tab1:
             else:
                 if st.session_state.ignore_cols:
                     selected_from_ignore = right_t1.selectbox(
-                        f"Pick the column to use for {st.session_state.entity_id} names",
+                        f"Pick the column to use for the {st.session_state.entity_id} names",
                         st.session_state.ignore_cols,
                         key="selected_from_ignore",
                     )
@@ -335,7 +335,7 @@ with tab2:
                         right_t2.write("\n")
 
                 # Path to save the CSV
-                QandA_path = "./data/describe/QandA_data.csv"
+                QandA_path = "./data/describe/generate/QandA_data.csv"
                 # Ensure the folder exists
                 os.makedirs(os.path.dirname(QandA_path), exist_ok=True)
                 # Save the DataFrame as a CSV file

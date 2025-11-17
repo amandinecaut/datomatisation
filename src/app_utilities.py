@@ -29,7 +29,7 @@ import os
 
 
 DEFAULT_CUM_EXP = 3
-DEFAULT_SUM_THRESHOLD = 0.6
+DEFAULT_THRESHOLD = 0.2
 DEFAULT_MAX_COMPONENTS = 7
 DEFAULT_NUM_CLUSTERS = 4
 
@@ -183,16 +183,34 @@ def load_map(file=None):
 def get_defaults():
     return (
         DEFAULT_CUM_EXP,
-        DEFAULT_SUM_THRESHOLD,
+        DEFAULT_THRESHOLD,
         DEFAULT_MAX_COMPONENTS,
         DEFAULT_NUM_CLUSTERS,
     )
 
+def choose_article(word):
+    """
+    Return 'a' or 'an' depending on whether the word starts with a vowel sound.
+    """
+    vowels = ("a", "e", "i", "o", "u")
+    w = word.lower().strip()
+
+    # Common special cases with silent 'h' or consonant-sounding vowels
+    an_exceptions = ("honest", "honor", "hour", "heir")
+    a_exceptions = ("university", "unicorn", "european", "one", "once")
+
+    if w.startswith(an_exceptions):
+        return "an"
+    if w.startswith(a_exceptions):
+        return "a"
+
+    # Default rule
+    return "an" if w.startswith(vowels) else "a"
 
 ### ----  Analysis tab utilities ---- ###
 
 # Factor Analysis utilities
-def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
+def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_THRESHOLD):
 
     if st.session_state.features != []:
         x = st.session_state.df_filtered.loc[:, st.session_state.features].values
@@ -242,13 +260,28 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
             #    c for c in np.argsort(c2)[::-1][:n] if components[i][c] < 0
             # ]
 
-            n = 2
+            #n = 2 # this is for the top 2 or bottom 2
+            #top_components = np.argsort(components[i])[::-1][:n]
+            #bottom_components = np.argsort(components[i])[:n]
 
-            top_components = np.argsort(components[i])[::-1][:n]
-            bottom_components = np.argsort(components[i])[:n]
+           
+            top = np.where(components[i] > threshold)[0]
+            bottom = np.where(components[i]< -threshold)[0]
+            top_components = top[np.argsort(components[i][top])[::-1]]
+            bottom_components = bottom[np.argsort(components[i][bottom])]
 
-            # print(f"top: {top_components}")
-            # print(f"bottom: {bottom_components}")
+            # Keep only top 5
+            n = 5
+            if len(top_components) > n:
+                top_components = top_components[:n]
+
+
+            if len(bottom_components) > n:
+                bottom_components = bottom_components[:n]
+
+
+            #print(f"top: {top_components}")
+            #print(f"bottom: {bottom_components}")
 
             # n = 5
             # top_components = np.argsort(components[i])[::-1][:n]
@@ -269,9 +302,9 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
             # text = "Features:\n"
             # text += ",\n".join(top_features + bottom_features)
 
-            text = f"Bottom {n} features:\n"
+            text = "Bottom features:\n"
             text += ", ".join(bottom_features)
-            text += f"\n\nTop {n} features:\n"
+            text += "\n\nTop features:\n"
             text += ", ".join(top_features)
 
 
@@ -307,6 +340,7 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_SUM_THRESHOLD):
 
 def get_component_labels(FA_component_dict):
     FALabeler = FALabel()
+    dict_label = []
     list_FA_labels = []
 
     for key, details in FA_component_dict.items():
@@ -319,6 +353,12 @@ def get_component_labels(FA_component_dict):
         
         # update the dict directly
         FA_component_dict[key]["label"] = label
+        dict_label.append({"User": f"What does the factor '{label}' mean?", "Assistant": f"{FALabeler.tell_it_what_data_to_use(details)}" })
+    
+    path = "./data/describe/generate/tell_it_what_it_knows.csv"
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    df_label = pd.DataFrame.from_dict(dict_label)
+    df_label.to_csv(path, index=False)
 
 def display_results(component):
     results_dict = st.session_state.FA_component_dict
@@ -362,23 +402,32 @@ def display_results(component):
 # Q&A utility
 def create_QandA(text: str | None):
     dictionary = st.session_state.FA_component_dict
+    entity = st.session_state.entity_id
+    article = choose_article(entity)
     QandA = QandAWordalisation()
     list_QandA = []
     for key, details in  dictionary.items():
         key1, key2 = split_qualities(dictionary[key]["label"])
-        for key in (key1, key2):
-            QandA.tell_it_what_data_to_use(key)
+        for factor in (key1, key2):
+            question = f"What does it mean when {article} {entity} is described as {factor}?"
+            QandA.tell_it_what_data_to_use(question)
             QandA.messages = QandA.setup_messages()
-            list_QandA.append(QandA.stream_gpt())
+            answer = QandA.stream_gpt()
+            list_QandA.append({"Question": question, "Answer": answer})
 
+    
     if text is not None:
+     
         QandA_text = QandAWordalisation_from_text()
         QandA_text.tell_it_what_data_to_use(text)
         QandA_text.messages = QandA_text.setup_messages()
-        list_QandA.append(QandA_text.stream_gpt())
+        sublist = QandA_text.stream_gpt()
+        print(sublist)
+        cleaned_list =  clean_qanda_list_text(sublist)
+        print(cleaned_list)
+        list_QandA.append(cleaned_list)
 
-    cleaned_list =  clean_qanda_list(list_QandA)
-    return qa_to_dataframe(cleaned_list)
+    return qa_to_dataframe(list_QandA)
 
 def split_qualities(text):
     # Use a regular expression to split on " vs " (case-insensitive)
@@ -387,18 +436,18 @@ def split_qualities(text):
 
     return text1, text2
 
-def clean_qanda_list(text_or_list):
+def clean_qanda_list_text(text_or_list):
     # If input is a list, join all items into one big text block
     if isinstance(text_or_list, list):
         text = "\n".join(text_or_list)
     else:
         text = text_or_list
+    text = re.sub(r'---+', '', text)
 
     qa_pairs = []
 
-    # Regex pattern capturing both formats:
-    # "Question:" or "**Question:**"
-    pattern = r'(?:\*\*?Question\*\*?:|Question:)\s*(.*?)\s*(?:\*\*?Answer\*\*?:|Answer:)\s*(.*?)(?=\nQuestion:|\n\*\*Question|\Z)'
+    # Regex pattern to capture both bold and plain question/answer formats
+    pattern = r'\*\*Question\s*\d*\*\*:\s*(.*?)\s*\*\*Answer\s*\d*\*\*:\s*(.*?)(?=(\*\*Question|\Z))'
 
     matches = re.findall(pattern, text, flags=re.DOTALL)
 
