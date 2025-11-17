@@ -310,7 +310,6 @@ class CreateWordalisation(Wordalisation):
 
         return text
 
-
     def tell_it_what_data_to_use(self):
 
         self.synthetic_text = self.get_description(self.indice)
@@ -328,8 +327,6 @@ class CreateWordalisation(Wordalisation):
             f"Here is the statistical description of the {self.entity_id}: ```{self.synthetic_text}```"
         )
         return [{"role": "user", "content": prompt}]
-
-
 
     def tell_it_what_it_knows_cluster(self):
         cluster_name = st.session_state.list_cluster_name
@@ -361,7 +358,6 @@ class CreateWordalisation(Wordalisation):
 
 
         return messages
-
 
     def setup_messages(self) -> List[Dict[str, str]]:
         """Builds and returns a list of chat messages for model input."""

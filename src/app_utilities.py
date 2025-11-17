@@ -359,17 +359,17 @@ def display_results(component):
             )
 
 
-
 # Q&A utility
-
 def create_QandA(text: str | None):
     dictionary = st.session_state.FA_component_dict
     QandA = QandAWordalisation()
     list_QandA = []
     for key, details in  dictionary.items():
-        QandA.tell_it_what_data_to_use(dictionary[key]["label"])
-        QandA.messages = QandA.setup_messages()
-        list_QandA.append(QandA.stream_gpt())
+        key1, key2 = split_qualities(dictionary[key]["label"])
+        for key in (key1, key2):
+            QandA.tell_it_what_data_to_use(key)
+            QandA.messages = QandA.setup_messages()
+            list_QandA.append(QandA.stream_gpt())
 
     if text is not None:
         QandA_text = QandAWordalisation_from_text()
@@ -377,150 +377,39 @@ def create_QandA(text: str | None):
         QandA_text.messages = QandA_text.setup_messages()
         list_QandA.append(QandA_text.stream_gpt())
 
-    cleaned_list = []
-    print(list_QandA)
-    # # for GEMINI: 
-    # for item in list_QandA:
-    #     # Remove ```json, ```, and leading/trailing whitespace
-    #     cleaned = re.sub(r"```json|```", "", item).strip()
-    #     # Convert escaped newlines \n into real newlines
-    #     cleaned = cleaned.encode("utf-8").decode("unicode_escape")
-    #     # Parse JSON
-    #     parsed = json.loads(cleaned)
-    #     cleaned_list.append(parsed)
-
-    cleaned = clean_qanda_list(list_QandA)
-    print('CLEAN')
-    print(cleaned)
-    print(json.dumps(cleaned, indent=2))
-
-
-
-    # cleaned_list = []
-
-    # json_pattern = re.compile(r"\{.*\}", re.DOTALL)
-
-    # for item in list_QandA:
-
-    #     # Remove triple backticks
-    #     no_ticks = re.sub(r"```json|```", "", item).strip()
-
-    #     # Extract JSON block only
-    #     match = json_pattern.search(no_ticks)
-    #     if not match:
-    #         raise ValueError(f"No JSON object found in:\n{item}")
-
-    #     cleaned = match.group(0)
-
-    #     # Decode escaped characters
-    #     cleaned = cleaned.replace("\\n", "\n").replace("\\t", "\t")
-
-    #     # Final parse
-    #     try:
-    #         parsed = json.loads(cleaned)
-    #     except json.JSONDecodeError as e:
-    #         raise ValueError(f"JSON error in string:\n{cleaned}") from e
-
-    #     cleaned_list.append(parsed)
-
-    
+    cleaned_list =  clean_qanda_list(list_QandA)
     return qa_to_dataframe(cleaned_list)
-        
 
-def clean_qanda_list(raw_list):
-    cleaned_output = []
+def split_qualities(text):
+    # Use a regular expression to split on " vs " (case-insensitive)
+    parts = re.split(r"\s+vs\.?\s+", text, flags=re.IGNORECASE)
+    text1, text2 = parts[0].strip(), parts[1].strip()
 
-    # Regex to capture one question + one answer at a time
-    pattern = re.compile(
-        r"\*\*Question:\*\*\s*(.*?)\s*"
-        r"\*\*Answer:\*\*\s*(.*?)(?=\s*\*\*Question:\*\*|\Z)",
-        re.DOTALL
-    )
+    return text1, text2
 
-    for block in raw_list:
+def clean_qanda_list(text_or_list):
+    # If input is a list, join all items into one big text block
+    if isinstance(text_or_list, list):
+        text = "\n".join(text_or_list)
+    else:
+        text = text_or_list
 
-        # Find all individual Q/A pairs inside the block
-        matches = pattern.findall(block)
+    qa_pairs = []
 
-        for q, a in matches:
-            # Remove markdown bold and separators
-            q = q.replace("**", "").replace("---", "").strip()
-            a = a.replace("**", "").replace("---", "").strip()
+    # Regex pattern capturing both formats:
+    # "Question:" or "**Question:**"
+    pattern = r'(?:\*\*?Question\*\*?:|Question:)\s*(.*?)\s*(?:\*\*?Answer\*\*?:|Answer:)\s*(.*?)(?=\nQuestion:|\n\*\*Question|\Z)'
 
-            # Replace line breaks inside with spaces
-            q = " ".join(q.split())
-            a = " ".join(a.split())
+    matches = re.findall(pattern, text, flags=re.DOTALL)
 
-            cleaned_output.append({
-                'Question': q,
-                'Answer': a
-            })
+    for q, a in matches:
+        qa_pairs.append({
+            "Question": q.strip(),
+            "Answer": a.strip()
+        })
 
-    return cleaned_output
+    return qa_pairs
 
-
-def create_QandA2(text: str | None):
-    """
-    Creates a dictionary of question and answer pairs based on component analysis 
-    and optional additional text.
-    """
-    MH = ModelHandler()
-    
-    # --- Generate Q&A for the component analysis ---
-    component_text = [
-        part 
-        for details in st.session_state.FA_component_dict.values() 
-        for part in ClusterWordalisation.split_qualities(details["label"])
-        ]
-           
-    msgs = {
-        "system_instruction": "You are a data analyst",
-        "history": [
-            {
-                "role": "user",
-                "parts": (
-                    "You have a list of each component deduced from factor analysis."
-                    "For each componant of the list you deduce question and answer pairs."
-                    "The questions should be about each component, and the answers should explain them. "
-                    "The question and answer are deduce from the factor analysis"
-                    "The questions should be simple and the answers should be easy to understand."
-                    "Make a dataframe with two columns: one column is 'User' for the question, one column is 'Assistant' for the answers"
-                    "Provide just the data dictionary from the code snippet, excluding imports and the DataFrame creation, without the rest of the Python script."
-                ),
-            }
-        ],
-        "content": {"role": "user", "parts": component_text},
-    }
-    
-    QandA = MH.get_generate(msgs, max_output_token = 200)
-    QandA = clean_QandA(QandA)
-    
-    # --- Generate Q&A for additional information if provided ---
-    if text is not None:
-        msgs = {
-        "system_instruction": "You are a data analyst and scientist",
-        "history": [
-            {
-                "role": "user",
-                "parts": (
-                    "You have information about the data and more context "
-                    "Deduce question and answer pairs from this text. "
-                    "Make a dataframe with two columns: one column is 'User' for the question, one column is 'Assistant. for the answers"
-                    "Provide just the data dictionary from the code snippet, excluding imports and the DataFrame creation, without the rest of the Python script."
-                ),
-            }
-        ],
-        "content": {"role": "user", "parts":  text },
-    }
-        
-        QandA2 = MH.get_generate(msgs, max_output_token = 200)
-        QandA2 = clean_QandA(QandA2)
-        
-        # Concatenate the two dictionaries
-        QandA['User'].extend(QandA2['User'])
-        QandA['Assistant'].extend(QandA2['Assistant'])
-
-    return QandA
 
 def qa_to_dataframe(qa_list):
     """
@@ -535,7 +424,8 @@ def qa_to_dataframe(qa_list):
     """
     rows = []
     
-    for item in itertools.chain.from_iterable(qa_list):
+    #for item in itertools.chain.from_iterable(qa_list):
+    for item in qa_list:
         # Normalise keys to handle slight variations like "Anwer"
         question = item.get("Question") or item.get("question")
         answer   = item.get("Answer") or item.get("Anwer") or item.get("answer")
