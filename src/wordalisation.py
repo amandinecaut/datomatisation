@@ -785,6 +785,9 @@ class FALabel(FA):
                   "I am now going to give you one last labelling task to complete. \n"
                   "Again, the name must strictly follow the form x vs y, where x is the opposite of the name y. "
                   "The name should not have a negative connotation. "
+                  "A combination of two adjectives for both x and y are preferred but if you can think of a single word for each then use that.\n"
+                  "Three word descriptions for both x and y are fine as well, especially if they capture the meaning well.\n"
+                  "Longer names are not allowed.\n"
                   "Output the name (in x vs y format) only. \n"
         )
         if self.existing_labels_text != "": 
@@ -810,6 +813,9 @@ class FALabel(FA):
                 "The adjective x should be the opposite of the name y.\n"
                 "Neither of the adjectives should have a negative connotation.\n"
                 "Output the name (in x vs y format) only.\n"
+                "A combination of two adjectives for both x and y are preferred but if you can think of a single word for each then use that.\n"
+                "Three word descriptions for both x and y are fine as well, especially if they capture the meaning well.\n"
+                "Longer names are not allowed.\n"
                 "I will provide you with factor descriptions and you will return the names in the format specified an nothing else. "}
             , 
             {"role": "assistant",
