@@ -57,7 +57,8 @@ with tab1:
         app_utilities.clear_session_state(skip=["file", "map"])
 
     # run default data
-    data_options = ["Select a Dataset", "Big Five", "World Value Survey", "Football Players"]
+    #data_options = ["Select a Dataset", "Big Five", "World Value Survey", "Football Players", "Breast Cancer","16 Personality", "Cardiovascular Disease"]
+    data_options = ["Select a Dataset"] + list(DATA_PATHS.keys())
     left_t1.selectbox(
         "Load demo dataset:",
         options=data_options,

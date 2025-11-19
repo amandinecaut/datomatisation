@@ -70,6 +70,21 @@ DATA_PATHS = {
         "data": "./data/demo_data/football/Forwards.csv",
         "map": "./data/demo_data/football/map-football.xlsx", 
         "entity": "football player"
+    },
+    "Breast Cancer": {
+        "data": "./data/demo_data/breast-cancer/breast-cancer-wisconsin-data.csv",
+        "map": "./data/demo_data/breast-cancer/breast-cancer-wisconsin-data-map.xlsx", 
+        "entity": "patient"
+    },
+    "16 Personality": {
+        "data": "./data/demo_data/16_personality/16p.csv",
+        "map": "./data/demo_data/16_personality/map.xlsx", 
+        "entity": "person"
+    },
+    "Cardiovascular Disease": {
+        "data": "./data/demo_data/cardiovascular/cardio_train.csv",
+        "map": "./data/demo_data/cardiovascular/cardio_map.xlsx", 
+        "entity": "patient"
     }
     # Add other datasets here
 }
@@ -177,11 +192,8 @@ def load_data(file=None):
     update_df()
     st.session_state.data_loading = False
 
-
-
 def update_df(ignore_cols=[]):
     df = st.session_state.df_full.copy()
-
 
     # if "ignore_cols" in st.session_state:
     #     features = [f for f in df.columns if f not in st.session_state.ignore_cols]
@@ -522,7 +534,6 @@ def clean_qanda_list_text(text_or_list):
         })
 
     return qa_pairs
-
 
 def qa_to_dataframe(qa_list):
     """
