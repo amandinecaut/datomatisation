@@ -158,17 +158,6 @@ class ClusterVisualisation:
             st.warning("Select dimensions (dim_x and dim_y) before plotting.")
             return
 
-        # Ensure required attributes are initialized
-        #required_attributes = ['df', 'centroids', 'u_labels', 'ind_col_map']
-        #for attr in required_attributes:
-        #    if attr not in st.session_state:
-        #        raise RuntimeError(f"Missing attribute: {attr}. Ensure clustering is run first.")
-
-
-        
-        #dim_x = st.session_state["dim_x"]
-        #dim_y = st.session_state["dim_y"]
-
         inv_map = {st.session_state.FA_component_dict[k]["label"]: k for k in st.session_state.FA_component_dict.keys()}
 
         for i in st.session_state.u_labels:
@@ -269,9 +258,9 @@ class ClusterVisualisation3D:
         # Plot centroids
         self.fig.add_trace(
             go.Scatter3d(
-            x=st.session_state.centroids[:, int(inv_map[dim_x].split()[-1])],
-            y=st.session_state.centroids[:, int(inv_map[dim_y].split()[-1])],
-            z=st.session_state.centroids[:, int(inv_map[dim_z].split()[-1])],   
+            x=st.session_state.centroids[:, int(inv_map[dim_x].split()[-1])- 1],
+            y=st.session_state.centroids[:, int(inv_map[dim_y].split()[-1])- 1],
+            z=st.session_state.centroids[:, int(inv_map[dim_z].split()[-1])- 1],   
             mode='markers',
             marker=dict(color='black', size=4, symbol='x'),
             name='Centroids'
