@@ -684,62 +684,15 @@ class Clusterlabel(Wordalisation):
 
         return messages
 
-class FALabel(Wordalisation):
-    @property
-    def tell_it_how_to_answer(self):
-        return [f"{self.describe_base}/few_shot_FA_label.xlsx"] 
 
-    @property
-    def tell_it_what_it_knows(self):
-        return [""]
-    
-    def __init__(self):
-        self.MH = ModelHandler()
-        self.entity_id = st.session_state.entity_id
-        super().__init__()
+class FA(Wordalisation):
+    # Functions used in both labelling and describing labels.
 
-    def tell_it_who_it_is(self) -> List[Dict[str, str]]:
-        """
-        Constant introduction messages for the assistant.
+    def tell_it_what_data_to_use(self, FA_component_dict):
 
-        Returns:
-        List of dicts with keys "role" and "content".
-        """
-        intro = [
-            {
-                "role": "system",
-                "content": (
-                    "You are a leading data scientist who specialises in explanatory data analysis. \n"
-                    f"You have recently conducted factor analyses that allows you to summarise various entities, "
-                    "identifying key underlying factors that explain the observed correlations among various features about those entities. \n"
-                    "In each case, you have identified which factors are negatively and positively associated with specific features and how strong that association is. \n"
-                    "Your task now is to name factors resulting from a factor analysis based on the analysis. \n"
-                ),
-            }, 
-            {                
-                "role": "assistant",
-                "content": (    
-                    "Understood. I will follow your instructions to name the factors based on their associations."
-                ),
-            }
-        ]
+        self.synthetic_text = self.description_FA(FA_component_dict)
+        return self.synthetic_text 
 
-        return intro
-
-    def get_prompt_messages(self):
-
-        prompt = ("I am now going to give you one last labelling task to complete. \n"
-                  "Again, the name must strictly follow the form x vs y, where x i the opposite of the name y. "
-                  "The name should not have a negative connotation. "
-                  "Output the name (in x vs y format) only. \n"
-        )
-        if self.existing_labels_text != "": 
-            prompt += f"{self.existing_labels_text}\n"
-
-        prompt += f"Here is the factor description in terms of the features of a {self.entity_id}: ```{self.synthetic_text}```"
-        
-        return [{"role": "user", "content": prompt}]
-    
     def describe_level_FA(self, value):
         thresholds=[0.30, 0.49, 0.59, 0.70]
         if value > 0: 
@@ -784,10 +737,64 @@ class FALabel(Wordalisation):
 
         return text
 
-    def tell_it_what_data_to_use(self, FA_component_dict):
+class FALabel(FA):
+    @property
+    def tell_it_how_to_answer(self):
+        return [f"{self.describe_base}/few_shot_FA_label.xlsx"] 
 
-        self.synthetic_text = self.description_FA(FA_component_dict)
-        return self.synthetic_text 
+    @property
+    def tell_it_what_it_knows(self):
+        return [""]
+    
+    def __init__(self):
+        self.MH = ModelHandler()
+        self.entity_id = st.session_state.entity_id
+        super().__init__()
+
+    def tell_it_who_it_is(self) -> List[Dict[str, str]]:
+        """
+        Constant introduction messages for the assistant.
+
+        Returns:
+        List of dicts with keys "role" and "content".
+        """
+        intro = [
+            {
+                "role": "system",
+                "content": (
+                    "You are a leading data scientist who specialises in explanatory data analysis. \n"
+                    f"You have recently conducted factor analyses that allows you to summarise various entities, "
+                    "identifying key underlying factors that explain the observed correlations among various features about those entities. \n"
+                    "In each case, you have identified which factors are negatively and positively associated with specific features and how strong that association is. \n"
+                    "Your task now is to name factors resulting from a factor analysis based on the analysis. \n"
+                ),
+            }, 
+            {                
+                "role": "assistant",
+                "content": (    
+                    "Understood. I will follow your instructions to name the factors based on their associations."
+                ),
+            }
+        ]
+
+        return intro
+
+    def get_prompt_messages(self):
+
+        prompt = ("Those were really good. Exactly what I am looking for. \n"
+                  "I am now going to give you one last labelling task to complete. \n"
+                  "Again, the name must strictly follow the form x vs y, where x is the opposite of the name y. "
+                  "The name should not have a negative connotation. "
+                  "Output the name (in x vs y format) only. \n"
+        )
+        if self.existing_labels_text != "": 
+            prompt += f"{self.existing_labels_text}\n"
+
+        prompt += f"Here is the factor description in terms of the features of a {self.entity_id}: ```{self.synthetic_text}```"
+        
+        return [{"role": "user", "content": prompt}]
+
+
 
     def setup_messages(self) -> List[Dict[str, str]]:
         """Builds and returns a list of chat messages for model input."""
@@ -821,14 +828,14 @@ class FALabel(Wordalisation):
 
         return messages
 
-class QandAWordalisation(Wordalisation):
+class QandAWordalisation(FA):
     @property
     def tell_it_how_to_answer(self):
         return [f"{self.describe_base}/few_shot_QandA.xlsx"] 
 
     @property
     def tell_it_what_it_knows(self):
-        return [f"{self.describe_base}/generate/tell_it_what_it_knows.csv"]
+        return [""]
     
     def __init__(self):
         self.MH = ModelHandler()
@@ -846,15 +853,19 @@ class QandAWordalisation(Wordalisation):
             {
                 "role": "system",
                 "content": (
-                    "You are a data analyst expert. \n"
-                    "You performed a factor analysis, and now you will generate a short summary of each deduced factor.\n"
-                    "First, to gain a better understanding, you will be provided with a description of each factor that you deduced from the factor analysis."
+                    "You are a leading data scientist who specialises in explanatory data analysis. \n"
+                    f"You have recently conducted factor analyses that allows you to summarise various entities, "
+                    "identifying key underlying factors that explain the observed correlations among various features about those entities. \n"
+                    "In each case, you have identified which factors are negatively and positively associated with specific features and how strong that association is. \n"
+                    "You have also given a name to the factors resulting from a factor analysis. \n"
+                    "The names have the form x vs y, where x is the opposite of the name y. \n"
+                    "Now, for each case, you are going to generate a short summary of factors based on the description provided.\n" 
                 ),
             }, 
             {                
                 "role": "assistant",
                 "content": (    
-                    "Understood. I will use the description to guide me to generate the short summary."
+                    "Understood. I will use the descriptions to generate short summaries."
                 ),
             }
         ]
@@ -863,21 +874,31 @@ class QandAWordalisation(Wordalisation):
 
     def get_prompt_messages(self):
         prompt = (
-            "Now you need to write a short summary of each factor analysis component.\n"
-            "You will be provided with each component deduced from factor analysis.\n"
-            "The summary should explain only the component provided.\n"
-            "The summary is based on factor analysis.\n"
-            "The summary should be easy to understand.\n"
-            "Output only the summary.\n"
-            f"Now do the same thing with the following: ```{self.synthetic_text}```"
+            "Those were really good. Exactly what I am looking for.\n"
+            "Now, I am now going to give you one last task to complete. \n"
+            f"I will give you, firstly, a name of a factor in the form {self.wholefactor}. \n" \
+            f"Second, I will give you a description of {self.wholefactor} in terms of the features of a given {self.entity}.\n"
+            f"Your task is to write a two sentence summary explaining how we should interpret {self.factor}.\n"
+            f"The first sentence should explain what it means to be {self.factor}. The second sentence "
+            f"should contrast it with being the opposite of {self.factor}.\n"
+            "The summary should be easy to understand for someone not familiar with factor analysis and not mention any technical terms.\n"
+            "It should be lively and engaging. Give life to the description.\n"
         )
-        
+        prompt = prompt + f"{self.synthetic_text}"
         return [{"role": "user", "content": prompt}]
     
 
-    def tell_it_what_data_to_use(self, FA_list_label):
+    def tell_it_what_data_to_use(self, article,entity,factor,wholefactor,FA_component_dict):
 
-        self.synthetic_text = FA_list_label
+        question = f"what does it mean when {article} {entity} is described as {factor}?"
+        self.factor = factor
+        self.wholefactor = wholefactor
+        self.entity= entity
+        self.synthetic_text = "The name of the factor is: " + wholefactor + ". \n" 
+        self.synthetic_text += "It was based on the following description: "
+        self.synthetic_text += self.description_FA(FA_component_dict) + "\n\n"
+        self.synthetic_text += "Now tell me, " + question + "\n\n"
+
         return self.synthetic_text 
 
     def setup_messages(self) -> List[Dict[str, str]]:
@@ -888,24 +909,27 @@ class QandAWordalisation(Wordalisation):
         try:
             tell_it_what_it_knows_paths = self.tell_it_what_it_knows
             messages += self.get_messages_from_excel(tell_it_what_it_knows_paths)
-        except FileNotFoundError as e:
+        except:
             # FIXME: When merging with new_training, add the other exception type
-            print(f"Describe paths file not found: {e}")
+            print(f"Describe paths file not found: ")
+            print(self.tell_it_what_it_knows)
 
         # --- Load few-shots examples  ---
         messages += [{
             "role": "user",
             "content": (
-                "Now you need to write a short summary of each factor analysis component.\n"
-                "You will be provided with each component deduced from factor analysis.\n"
-                "The summary should explain only the component provided.\n"
-                "The summary is based on factor analysis.\n"
-                "The summary should be easy to understand.\n"
-                "Output only the summary.\n"
-                "First, here are some examples to guide you on the intended tone."
-                )}, 
+                    "Let's now try some examples of your task. I will now provide you with two things.\n"
+                    "First, a name of a factor in the form x vs y, where adjective x is the opposite of the adjective y. \n" \
+                    "Second, a description of the factor in terms of the features of a given entity.\n"
+                    "Your task is to write a two sentence summary explaining how we should interpret either x or y.\n"
+                    "Sometimes you will be asked to explain x, other times y.\n"
+                    "The first sentence should explain what it means to possess the adjective in question. "
+                    "The second sentence should contrast it with its opposite.\n"
+                    "The summary should be easy to understand for someone not familiar with factor analysis and not mention any technical terms.\n"
+                    "It should be lively and engaging. Give life to the description.\n"
+                 )}, 
             {"role": "assistant",
-            "content": "Understood!"
+            "content": "Understood! Please provide the first factor name and description."
             }]
 
         try:

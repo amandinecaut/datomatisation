@@ -407,10 +407,11 @@ def create_QandA(text: str | None):
     QandA = QandAWordalisation()
     list_QandA = []
     for key, details in  dictionary.items():
-        key1, key2 = split_qualities(dictionary[key]["label"])
+        wholefactor = dictionary[key]["label"]
+        key1, key2 = split_qualities(wholefactor)
         for factor in (key1, key2):
             question = f"What does it mean when {article} {entity} is described as {factor}?"
-            QandA.tell_it_what_data_to_use(question)
+            QandA.tell_it_what_data_to_use(article,entity,factor, wholefactor, details)
             QandA.messages = QandA.setup_messages()
             answer = QandA.stream_gpt()
             list_QandA.append({"Question": question, "Answer": answer})
