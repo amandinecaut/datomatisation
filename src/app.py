@@ -57,8 +57,14 @@ with tab1:
         app_utilities.clear_session_state(skip=["file", "map"])
 
     # run default data
-    if left_t1.button("Load demo data"):
-        app_utilities.set_default_data()
+    data_options = ["Select a Dataset", "Big Five", "World Value Survey"]
+    left_t1.selectbox(
+        "Load demo dataset:",
+        options=data_options,
+        key="demo_dataset_choice", 
+        index=0, 
+        on_change=set_default_data_callback 
+    )
 
     # left all box to upload data
     left_t1.markdown("#### Upload data")
