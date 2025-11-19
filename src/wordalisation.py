@@ -709,15 +709,17 @@ class FALabel(Wordalisation):
             {
                 "role": "system",
                 "content": (
-                    "You are an expert data analyst. \n"
-                    "Your task is to name factors resulting from a factor analysis based on the analysis. \n"
-                    "First, you will be provided with a set of examples."
+                    "You are a leading data scientist who specialises in explanatory data analysis. \n"
+                    f"You have recently conducted factor analyses that allows you to summarise various entities, "
+                    "identifying key underlying factors that explain the observed correlations among various features about those entities. \n"
+                    "In each case, you have identified which factors are negatively and positively associated with specific features and how strong that association is. \n"
+                    "Your task now is to name factors resulting from a factor analysis based on the analysis. \n"
                 ),
             }, 
             {                
                 "role": "assistant",
                 "content": (    
-                    "Understood. I will use the examples to guide me in naming the factors."
+                    "Understood. I will follow your instructions to name the factors based on their associations."
                 ),
             }
         ]
@@ -725,19 +727,16 @@ class FALabel(Wordalisation):
         return intro
 
     def get_prompt_messages(self):
-        prompt = (
-            "Make a label from the following texts that come from factor analysis.\n"
-            "The label must strictly follow the format: 'bottom features vs top features'.\n"
-            f"The label should be of the form x vs y, where x is one adjective that describe a {self.entity_id} that has the bottom features, and y is one adjective that describe a {self.entity_id} that has the top features.\n"
-            "The label x should be the opposite of the label y.\n"
-            "The label should not have a negative connotation.\n"
-            "Output a label only.\n"
+
+        prompt = ("I am now going to give you one last labelling task to complete. \n"
+                  "Again, the name must strictly follow the form x vs y, where x i the opposite of the name y. "
+                  "The name should not have a negative connotation. "
+                  "Output the name (in x vs y format) only. \n"
         )
         if self.existing_labels_text != "": 
             prompt += f"{self.existing_labels_text}\n"
 
-        prompt += f"Now do the same thing with the following: ```{self.synthetic_text}```"
-        
+        prompt += f"Here is the factor description in terms of the features of a {self.entity_id}: ```{self.synthetic_text}```"
         
         return [{"role": "user", "content": prompt}]
     
@@ -749,11 +748,11 @@ class FALabel(Wordalisation):
             text = 'negatively'
 
         words = [
-        f" very weakly {text} associated with ",  
-        f" weakly {text} associated with ",  
-        f" moderately {text} associated with ",
-        f" strongly {text} associated with ",
-        f" very strongly {text} associated with ", 
+        f"very weakly {text} associated with ",  
+        f"weakly {text} associated with ",  
+        f"moderately {text} associated with ",
+        f"strongly {text} associated with ",
+        f"very strongly {text} associated with ", 
         ]
         return CreateWordalisation.describe(thresholds, words, abs(value))
 
@@ -761,28 +760,26 @@ class FALabel(Wordalisation):
         if not list_labels:
             self.existing_labels_text = ''
         elif len(list_labels) ==1:
-            self.existing_labels_text = "The existing label is: " + list_labels[0] + ". The label must be different from previous label."
+            self.existing_labels_text = "An existing name is: " + list_labels[0] + ". In this case, it is important that the name you now make is different from this name."
         else:
-            self.existing_labels_text = "The existing labels are: " + ", ".join(list_labels) + ". The label must be different from previous labels."
+            self.existing_labels_text = "The existing names are: " + ", ".join(list_labels) + ". In this case, it is important that the name you now make is different from these names."
         return self.existing_labels_text
     
     def description_FA(self, FA_component_dict): 
-        text = ""
-
-
+    
         top_features = FA_component_dict.get("top", [])
         top_values = FA_component_dict.get("values_top", [])
         bottom_features = FA_component_dict.get("bottom", [])
         bottom_values = FA_component_dict.get("values_bottom", [])
 
         # --- TOP FEATURES (positive loadings)
-        text += "The factor is described as"
-        descriptions = [self.describe_level_FA(value) + f"statement such that {feature}" for feature, value in zip(top_features, top_values)]
+        text = "The factor is "
+        descriptions = [self.describe_level_FA(value) + f"the feature that {feature}" for feature, value in zip(top_features, top_values)]
         text += ", ".join(descriptions) + ". "
                 
         # --- BOTTOM FEATURES (negative loadings)
-        text += "The factor is described as"
-        descriptions = [self.describe_level_FA(value) + f"statement such that {feature}" for feature, value in zip(bottom_features, bottom_values)]
+        text += "The factor is "
+        descriptions = [self.describe_level_FA(value) + f"the feature that {feature}" for feature, value in zip(bottom_features, bottom_values)]
         text += ", ".join(descriptions) + ". "
 
         return text
@@ -799,16 +796,17 @@ class FALabel(Wordalisation):
         # --- Load few-shots examples  ---
         messages += [{
             "role": "user",
-            "content": (
-                "Make a label from the following texts that come from factor analysis.\n"
-                "The label must strictly follow the format: 'bottom features vs top features'.\n"
-                f"The label should be of the form x vs y, where x is one adjective that describe a {self.entity_id} that has the bottom features, and y is one adjective that describe a {self.entity_id} that has the top features.\n"
-                "The label x should be the opposite of the label y.\n"
-                "The label should not have a negative connotation.\n"
-                "Output a label only."
-            )}, 
+            "content":"You are now going to name the factors that come from some factor analyses.\n"
+                "The name must strictly follow the format: 'negative vs positive' association.\n"
+                f"Specifically, the name should be of the form x vs y, where x is one adjective that is "
+                "negatively associated with the features and y is one adjective that is positively associated with the features.\n"
+                "The adjective x should be the opposite of the name y.\n"
+                "Neither of the adjectives should have a negative connotation.\n"
+                "Output the name (in x vs y format) only.\n"
+                "I will provide you with factor descriptions and you will return the names in the format specified an nothing else. "}
+            , 
             {"role": "assistant",
-            "content": "Understood. Please provide the factor description."
+            "content": "Understood. Please provide the first factor description."
             }]
 
         try:
