@@ -59,12 +59,17 @@ DATA_PATHS = {
     "Big Five": {
         "data": "./data/demo_data/big_five/data-sample.csv",
         "map": "./data/demo_data/big_five/map.xlsx", 
-        "entity_id": "person"
+        "entity": "person"
     },
     "World Value Survey": {
         "data": "./data/demo_data/wvs/data-wvs.csv",
         "map": "./data/demo_data/wvs/map-wvs.json", 
-        "entity_id": "country"
+        "entity": "country"
+    },
+    "Football Players": {
+        "data": "./data/demo_data/football/Forwards.csv",
+        "map": "./data/demo_data/football/map-football.xlsx", 
+        "entity": "football player"
     }
     # Add other datasets here
 }
@@ -72,19 +77,19 @@ DATA_PATHS = {
 ### ---- Load data tab utilities ---- ###
 
 def set_default_data(choice):
-    clear_session_state(skip=["file", "map"])
-    if choice in DATA_PATHS:
-        data_file = DATA_PATHS[choice]["data"]
-        map_file = DATA_PATHS[choice]["map"]
-        load_data(data_file)
-        load_map(map_file)
-        st.session_state.entity_id = DATA_PATHS[choice]["entity_id"]
-    else:
+    #clear_session_state(skip=["file", "map"])
+    dataset_info = DATA_PATHS.get(choice)
+    if not dataset_info:
         st.info("Please select a dataset to load.")
+        return
 
+    load_data(dataset_info["data"])
+    load_map(dataset_info["map"])
+    st.session_state.entity_id = dataset_info["entity"]
+    
 def set_default_data_callback():
     """Wrapper function to handle the selectbox on_change event."""
-    choice = st.session_state.demo_dataset_choice
+    choice = st.session_state.get("demo_dataset_choice")
     
     # Only load data if the selection is a valid dataset (not the placeholder)
     if choice != "Select a Dataset":
@@ -121,48 +126,62 @@ def detect_delimiter(first_line):
 
     return best_delimiter
 
-def load_data(file=None):
-
-    st.session_state.data_loading = True
-
-    if file is None:
-        file = st.session_state["file"]
-
-   
+def detect_file_settings(file): 
     encoding_used = 'utf-8' 
     delimiter = ','       
     first_line_decoded = None
     
+    # Read a sample of the file
     if isinstance(file, st.runtime.uploaded_file_manager.UploadedFile):
         file.seek(0)
         raw_data_sample = file.read(4096) 
         file.seek(0) 
-        # Encoding Detection
-        for encoding in ['utf-8', 'ISO-8859-1', 'cp1252']:
-            try:
-                first_line_decoded = raw_data_sample.decode(encoding)
-                encoding_used = encoding
-                break 
-            except UnicodeDecodeError:
-                continue
+    elif isinstance(file, str):
+        with open(file, "rb") as f:
+            raw_data_sample = f.read(4096)
+    else:
+        raise ValueError("Unsupported file type")
 
-        if first_line_decoded:
-            first_line = first_line_decoded.split('\n')[0]
-            delimiter = detect_delimiter(first_line)
-        
+    # Encoding Detection
+    for encoding in ['utf-8', 'ISO-8859-1', 'cp1252']:
+        try:
+            first_line_decoded = raw_data_sample.decode(encoding)
+            encoding_used = encoding
+            break 
+        except UnicodeDecodeError:
+            continue
+
+    if first_line_decoded:
+        first_line = first_line_decoded.split('\n')[0]
+        delimiter = detect_delimiter(first_line)
+    
+    return encoding_used, delimiter
+
+def load_data(file=None):
+    st.session_state.data_loading = True
+    if file is None:
+        file = st.session_state["file"]
+
+
+    encoding_used, delimiter = detect_file_settings(file)
+
     st.session_state.df_full = pd.read_csv(
-        file, 
-        sep=delimiter, 
-        engine="python", 
+        file,
+        sep=delimiter,
+        engine="python",
         encoding=encoding_used
     )
-   
+    
+    # Reset column mapping and update DataFrame
     st.session_state.col_mapping = {}
     update_df()
     st.session_state.data_loading = False
 
+
+
 def update_df(ignore_cols=[]):
     df = st.session_state.df_full.copy()
+
 
     # if "ignore_cols" in st.session_state:
     #     features = [f for f in df.columns if f not in st.session_state.ignore_cols]
@@ -173,6 +192,7 @@ def update_df(ignore_cols=[]):
     features = [f for f in df.columns if f not in ignore_cols]
     features = [f for f in features if f != st.session_state.entity_col]
     st.session_state.features = features
+
     
 
     if st.session_state.entity_col not in df.columns:

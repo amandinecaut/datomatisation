@@ -57,7 +57,7 @@ with tab1:
         app_utilities.clear_session_state(skip=["file", "map"])
 
     # run default data
-    data_options = ["Select a Dataset", "Big Five", "World Value Survey"]
+    data_options = ["Select a Dataset", "Big Five", "World Value Survey", "Football Players"]
     left_t1.selectbox(
         "Load demo dataset:",
         options=data_options,
@@ -130,7 +130,7 @@ with tab1:
             st.info("Loading data, please wait...")
         else:
             expander_sample = right_t1.expander("Sample of the data")
-            expander_sample.write(st.session_state.df_full)#.sample(5))
+            expander_sample.write(st.session_state.df_full.sample(5))
 
             cols = ["Index"] + st.session_state.df_full.columns.to_list()
             # drop down "select entity", default to "Index"
@@ -211,31 +211,47 @@ with tab1:
 
             expander_map = right_t1.expander("Column mapping")
             expander_map.write(st.session_state.col_mapping)
-            st.session_state.tab1_done = True
 
-            article = choose_article(st.session_state.entity_id)
+
+            #print("ignore cols", st.session_state.ignore_cols)
+            if "entity_radio" not in st.session_state:
+                st.session_state.entity_radio = "No"
+                
             entity_name_radio = right_t1.radio(
-            f"Does your dataset contain a column for {article} {st.session_state.entity_id} name?",
-            options=["Yes", "No"],
-            index=1,  # default to "No"
-            key="entity_radio",
-            )
+                f"Does your dataset contain a column for the names?",
+                options=["Yes", "No"],
+                #index=1,  # default to "No"
+                key="entity_radio",
+                )
+
+            print('entity name radio', st.session_state.entity_radio)
+
 
             if entity_name_radio == "No":
                 st.session_state["col_name"] = None
-            else:
+                print('NO')
+                #print('col name', st.session_state.ignore_cols)
+                
+            elif entity_name_radio == "Yes":
+                print('YES')
                 if st.session_state.ignore_cols:
                     selected_from_ignore = right_t1.selectbox(
-                        f"Pick the column to use for the {st.session_state.entity_id} names",
-                        st.session_state.ignore_cols,
-                        key="selected_from_ignore",
+                         f"Pick the column to use for the {st.session_state.entity_id} names",
+                         options = st.session_state.ignore_cols,
+                         key="selected_from_ignore",
                     )
+                   
 
-                    # store it in session_state
+                     # store it in session_state
                     st.session_state["col_name"] = selected_from_ignore
                     expander_col_name = right_t1.expander(f"Show the column used for the {st.session_state.entity_id} names")
                     #expander_col_name.write(st.session_state.df_full[[selected_from_ignore]])
                     expander_col_name.write(st.session_state.df_full.loc[st.session_state.df_filtered.index, [selected_from_ignore]])
+                else:
+                     # Handle the case where the user selected "Yes" but there are no ignored columns
+                    right_t1.warning("To select an entity name column, it must be in the 'Ignore columns' list. Please select a column to ignore first.")
+
+            st.session_state.tab1_done = True
      
 
 # "Analysis Tools"
