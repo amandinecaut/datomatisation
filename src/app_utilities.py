@@ -54,12 +54,41 @@ default_values = {
     
 }
 
+### ---- Demo data path ---- ###
+DATA_PATHS = {
+    "Big Five": {
+        "data": "./data/demo_data/big_five/data-sample.csv",
+        "map": "./data/demo_data/big_five/map.xlsx", 
+        "entity_id": "person"
+    },
+    "World Value Survey": {
+        "data": "./data/demo_data/wvs/data-wvs.csv",
+        "map": "./data/demo_data/wvs/map-wvs.json", 
+        "entity_id": "country"
+    }
+    # Add other datasets here
+}
+
 ### ---- Load data tab utilities ---- ###
 
-def set_default_data():
+def set_default_data(choice):
     clear_session_state(skip=["file", "map"])
-    load_data("./data/data-sample.csv")
-    load_map("./data/map.xlsx")
+    if choice in DATA_PATHS:
+        data_file = DATA_PATHS[choice]["data"]
+        map_file = DATA_PATHS[choice]["map"]
+        load_data(data_file)
+        load_map(map_file)
+        st.session_state.entity_id = DATA_PATHS[choice]["entity_id"]
+    else:
+        st.info("Please select a dataset to load.")
+
+def set_default_data_callback():
+    """Wrapper function to handle the selectbox on_change event."""
+    choice = st.session_state.demo_dataset_choice
+    
+    # Only load data if the selection is a valid dataset (not the placeholder)
+    if choice != "Select a Dataset":
+        set_default_data(choice)
 
 def clear_session_state(skip=[]):
     for key in st.session_state.keys():
@@ -99,23 +128,37 @@ def load_data(file=None):
     if file is None:
         file = st.session_state["file"]
 
-    delimiter = None
+   
+    encoding_used = 'utf-8' 
+    delimiter = ','       
+    first_line_decoded = None
+    
     if isinstance(file, st.runtime.uploaded_file_manager.UploadedFile):
-        for line in file:
-            line = line.decode("utf-8")
-            delimiter = detect_delimiter(line)
-            break
         file.seek(0)
+        raw_data_sample = file.read(4096) 
+        file.seek(0) 
+        # Encoding Detection
+        for encoding in ['utf-8', 'ISO-8859-1', 'cp1252']:
+            try:
+                first_line_decoded = raw_data_sample.decode(encoding)
+                encoding_used = encoding
+                break 
+            except UnicodeDecodeError:
+                continue
 
-    st.session_state.df_full = pd.read_csv(file, sep=delimiter, engine="python")
-    # remove current map
+        if first_line_decoded:
+            first_line = first_line_decoded.split('\n')[0]
+            delimiter = detect_delimiter(first_line)
+        
+    st.session_state.df_full = pd.read_csv(
+        file, 
+        sep=delimiter, 
+        engine="python", 
+        encoding=encoding_used
+    )
+   
     st.session_state.col_mapping = {}
-
-    # if "map" in st.session_state:
-    #     del st.session_state["map"]
-
     update_df()
-
     st.session_state.data_loading = False
 
 def update_df(ignore_cols=[]):
@@ -137,7 +180,12 @@ def update_df(ignore_cols=[]):
     else:
         cols = [st.session_state.entity_col] + st.session_state.features
 
-    st.session_state.df_filtered = df[cols].dropna()
+    # --- DROP ROWS WITH ANY NaN ---
+    #na_values=['?', 'NA', 'N/A', '--', '-', 'null', 'None', '']
+    df_filtered = df[cols]
+    df_filtered = df_filtered.dropna(axis=0, how="any") 
+    st.session_state.df_filtered = df_filtered
+    #st.session_state.df_filtered = df[cols].dropna()
 
     # set the entity column as the index
     if st.session_state.entity_col != "Index":
@@ -320,12 +368,7 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_THRESHOLD):
         get_component_labels(FA_component_dict)
         st.session_state.FA_component_dict = FA_component_dict
         
-
-        
         st.session_state.df = principalDf.apply(zscore, nan_policy="omit")
-    
-        #st.session_state.df = principalDf
-
 
         vis = DistributionPlot(
             st.session_state.df,
