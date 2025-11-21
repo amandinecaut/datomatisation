@@ -72,8 +72,8 @@ DATA_PATHS = {
         "entity": "football player"
     },
     "Breast Cancer": {
-        "data": "./data/demo_data/breast-cancer/breast-cancer-wisconsin-data.csv",
-        "map": "./data/demo_data/breast-cancer/breast-cancer-wisconsin-data-map.xlsx", 
+        "data": "./data/demo_data/breast-cancer/wdbc_data.csv",
+        "map": "./data/demo_data/breast-cancer/wdbc_map.xlsx", 
         "entity": "patient"
     },
     "16 Personality": {
