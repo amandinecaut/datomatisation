@@ -63,7 +63,7 @@ DATA_PATHS = {
     },
     "World Value Survey": {
         "data": "./data/demo_data/wvs/data-wvs.csv",
-        "map": "./data/demo_data/wvs/map-wvs.json", 
+        "map": "./data/demo_data/wvs/questions.xlsx", 
         "entity": "country"
     },
     "Football Players": {
