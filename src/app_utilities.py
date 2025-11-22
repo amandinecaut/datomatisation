@@ -415,7 +415,7 @@ def perform_FA(cum_exp=DEFAULT_CUM_EXP, threshold=DEFAULT_THRESHOLD):
 
 def get_component_labels(FA_component_dict):
     FALabeler = FALabel()
-    dict_label = []
+    #dict_label = []
     list_FA_labels = []
 
     for key, details in FA_component_dict.items():
@@ -428,12 +428,12 @@ def get_component_labels(FA_component_dict):
         
         # update the dict directly
         FA_component_dict[key]["label"] = label
-        dict_label.append({"User": f"What does the factor '{label}' mean?", "Assistant": f"{FALabeler.tell_it_what_data_to_use(details)}" })
+        #dict_label.append({"User": f"What does the factor '{label}' mean?", "Assistant": f"{FALabeler.tell_it_what_data_to_use(details)}" })
     
-    path = "./data/describe/generate/tell_it_what_it_knows.csv"
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    df_label = pd.DataFrame.from_dict(dict_label)
-    df_label.to_csv(path, index=False)
+    #path = "./data/describe/generate/tell_it_what_it_knows.csv"
+    #os.makedirs(os.path.dirname(path), exist_ok=True)
+    #df_label = pd.DataFrame.from_dict(dict_label)
+    #df_label.to_csv(path, index=False)
 
 def display_results(component):
     results_dict = st.session_state.FA_component_dict

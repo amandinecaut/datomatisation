@@ -39,9 +39,7 @@ class Cluster:
         # Get the cluster description
         self.list_description_cluster = self.get_description_cluster_list(self.centroids)
 
-         # Get the cluster name
-        #self.list_cluster_name = self.name_the_cluster_with_centroid(self.centroids)
-        
+         # Get the cluster name        
         self.list_cluster_name = self.name_the_cluster(self.list_description_cluster)
 
         self.u_labels = self.df['Cluster'].unique()
@@ -82,40 +80,7 @@ class Cluster:
             list_name_cluster.append(label.lower())
         return list_name_cluster
 
-    def name_the_cluster_with_centroid(self, centroids):
-        
-        list_name_dim = []
-        
-        for _ , details in st.session_state.FA_component_dict.items():
-            list_name_dim.append(details['label'])
-        
-              
-        list_name_cluster = []
-
-        for center in centroids:
-            describe_centroid = []
-            for dim in np.arange(len(center)):
-                value_dim = center[dim]
-                text_dim = self.desc.describe_level_cluster(value_dim)
-                text_low, text_high = self.desc.split_qualities(list_name_dim[dim])
-
-
-                if value_dim >= 0:
-                    text_dim += text_high
-                else:
-                    text_dim += text_low
-                describe_centroid.append(text_dim)
-            text = ", ".join(describe_centroid)  
-            
-            text = self.desc.get_cluster_label_with_centroid(text)
-            list_name_cluster.append(text)
-        return list_name_cluster
-
-
-
-
-
-
+    
 
     # Useless for now
     #def find_closest_points(self, kmeans):

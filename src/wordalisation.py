@@ -37,8 +37,6 @@ class Wordalisation(ABC):
         #self.messages = self.setup_messages()
         self._config = toml.load(".streamlit/secrets.toml")
         
-       
-
     def tell_it_what_data_to_use(self) -> str:
         """
         Return a data description that will be used to prompt.
@@ -62,8 +60,7 @@ class Wordalisation(ABC):
         Returns:
         List of dicts with keys "role" and "content".
         """
-
-        
+  
     def get_messages_from_excel(self,paths: Union[str, List[str]],) -> List[Dict[str, str]]:
         """
         Turn an excel file containing user and assistant columns with str values into a list of dicts.
@@ -169,11 +166,11 @@ class CreateWordalisation(Wordalisation):
 
     @property
     def tell_it_how_to_answer(self):
-        return f"{self.describe_base}/few_shot_examples.xlsx"
+        return f"{self.describe_base}/few_shot/few_shot_examples.xlsx"
 
     @property
     def tell_it_what_it_knows(self):
-        return [f"{self.describe_base}/QandA_data.csv"]
+        return [f"{self.describe_base}/generate/QandA_data.csv"]
 
 
     def __init__(self):
@@ -413,7 +410,7 @@ class ClusterWordalisation(Wordalisation):
 
     @property
     def tell_it_how_to_answer(self):
-        return [f"{self.describe_base}/few_shot_cluster.xlsx"] 
+        return [f"{self.describe_base}/few_shot/few_shot_cluster_description.xlsx"] 
 
     @property
     def tell_it_what_it_knows(self):
@@ -453,26 +450,6 @@ class ClusterWordalisation(Wordalisation):
 
         return text1, text2
 
-    def get_cluster_label_with_centroid(self, text):
-
-        msgs = { 
-            "system_instruction": "You are a data analyst.", 
-            "history": [ 
-                { 
-                "role": "user", 
-                "parts": ( 
-                    "Generate a short label for the clusters.\n" 
-                    "The label is maximum 2 words.\n" 
-                    "The label must have a positive or neutral connotation. The label should not have negative connotation.\n" 
-                    "The label must be different from previous labels.\n"
-                    "Output a label only — nothing else." 
-                    ), 
-                }, 
-                ], 
-            "content": {"role": "user", "parts": text}, }
-        text_generate = self.MH.get_generate(msgs, max_output_token = 5)
-        
-        return text_generate.lower() 
 
     def tell_it_who_it_is(self) -> List[Dict[str, str]]:
         """
@@ -485,9 +462,16 @@ class ClusterWordalisation(Wordalisation):
             {
                 "role": "system",
                 "content": (
-                    "You are a data analyst. \n"
-                    "You are going to describe some clusters. \n"
-                    "First, you will be provided with a set of questions and answers that give you the necessary context."
+                    "You are a data analyst and you did a factor analysis, then a clustering. \n"
+                    "You are task is to describe some clusters given the provided informations. \n"
+                    "You will get a description of each cluster based on the latent factors. \n"
+                    "First, you will be provided with a set of questions and answers that give you the necessary informations on each factors."
+                ),
+            },
+            {
+                "role": "assistant",
+                "content": (    
+                    "Understood. I will follow your instructions to describe the clusters based on the provided information."
                 ),
             }
         ]
@@ -496,11 +480,12 @@ class ClusterWordalisation(Wordalisation):
 
     def get_prompt_messages(self):
         prompt = (
-            "You will be provided with a list that describes a cluster.\n"
+            "Now your task is to provide a description of a cluster.\n"
+            "You will receive information about the cluster based on the latent factors that best describe it.\n"
             "For each cluster, write a concise summary based on the available information.\n"
             "The first sentence should give an overview of the cluster. \n"
             "The second sentence should describe the cluster’s specific strengths based on the available information.\n"
-            "The third should highlight areas where the cluster has specific weaknesses based on the available information.\n"
+            "The third sentence should highlight areas where the cluster has specific weaknesses based on the available information.\n"
             f"Now do the same thing with the following: ```{self.synthetic_text}```"
         )
         
@@ -527,7 +512,7 @@ class ClusterWordalisation(Wordalisation):
             describe_center.append(text_dim)
 
         text = ", ".join(describe_center)  
-        full_text = f"The cluster center can be characterised as: {text}"
+        full_text = f"Members of this cluster can be described as: {text}"
             
         return full_text
 
@@ -544,7 +529,7 @@ class ClusterWordalisation(Wordalisation):
         messages = self.tell_it_who_it_is()
 
         # ---- Tell it what it knows ----
-        messages += self.get_messages_from_excel([f"{self.describe_base}/generate/tell_it_what_it_knows.csv"])
+        #messages += self.get_messages_from_excel([f"{self.describe_base}/generate/tell_it_what_it_knows.csv"])
         # --- Load QandA ---
         try:
             tell_it_what_it_knows_paths = self.tell_it_what_it_knows
@@ -559,17 +544,18 @@ class ClusterWordalisation(Wordalisation):
             "role": "user",
             "content": (
                 "Now your task is to provide a description of a cluster.\n"
-                "You will receive information about the cluster center.\n"
-                "You also have example descriptions that illustrate the language style and level of detail to use.\n"
+                "You will receive information about the cluster based on the latent factors that best describe it.\n"
                 "For each cluster, write a concise summary based on the available information.\n"
                 "The first sentence should give an overview of the cluster. \n"
                 "The second sentence should describe the cluster’s specific strengths based on the available information.\n"
                 "The third sentence should highlight areas where the cluster has specific weaknesses based on the available information.\n"
-            )
+                "I will provided you with the cluster description and you will return the summary. "
+            )   
             },
             {"role": "assistant",
             "content": "Understood. Please provide the cluster descriptions."
             }]
+
 
         try:
             example_paths = self.tell_it_how_to_answer
@@ -589,11 +575,11 @@ class ClusterWordalisation(Wordalisation):
 class Clusterlabel(Wordalisation):
     @property
     def tell_it_how_to_answer(self):
-        return [f"{self.describe_base}/few_shot_label.xlsx"] 
+        return [f"{self.describe_base}/few_shot/few_shot_cluster_label.xlsx"] 
 
     @property
     def tell_it_what_it_knows(self):
-        return [f"{self.describe_base}/QandA_data.csv"]
+        return [f"{self.describe_base}/generate/QandA_data.csv"]
     
     def __init__(self):
         self.MH = ModelHandler()
@@ -666,10 +652,11 @@ class Clusterlabel(Wordalisation):
                 "The label must have a positive or neutral connotation. The label should not have negative connotation.\n" 
                 "The label must be different from previous labels.\n"
                 "Output a label only — nothing else.\n"
-                "You will be provided with example cluster descriptions and their corresponding labels to guide you."
+                "I will provide you with cluster descriptions and you will return the label in the format specified an nothing else. "
             )}, 
-            {"role": "assistant",
-            "content": "Understood. Please provide the cluster descriptions."
+            {
+                "role": "assistant",
+                "content": "Understood. Please provide the first cluster description."
             }]
 
         try:
@@ -725,22 +712,26 @@ class FA(Wordalisation):
         bottom_features = FA_component_dict.get("bottom", [])
         bottom_values = FA_component_dict.get("values_bottom", [])
 
+
+        text = ''
         # --- TOP FEATURES (positive loadings)
-        text = "The factor is "
-        descriptions = [self.describe_level_FA(value) + f"the feature that {feature}" for feature, value in zip(top_features, top_values)]
-        text += ", ".join(descriptions) + ". "
+        if top_features:
+            text = "The factor is "
+            descriptions = [self.describe_level_FA(value) + f"the feature that {feature}" for feature, value in zip(top_features, top_values)]
+            text += ", ".join(descriptions) + ". "
                 
         # --- BOTTOM FEATURES (negative loadings)
-        text += "The factor is "
-        descriptions = [self.describe_level_FA(value) + f"the feature that {feature}" for feature, value in zip(bottom_features, bottom_values)]
-        text += ", ".join(descriptions) + ". "
+        if bottom_features:
+            text += "The factor is "
+            descriptions = [self.describe_level_FA(value) + f"the feature that {feature}" for feature, value in zip(bottom_features, bottom_values)]
+            text += ", ".join(descriptions) + ". "
 
         return text
 
 class FALabel(FA):
     @property
     def tell_it_how_to_answer(self):
-        return [f"{self.describe_base}/few_shot_FA_label.xlsx"] 
+        return [f"{self.describe_base}/few_shot/few_shot_FA_label.xlsx"] 
 
     @property
     def tell_it_what_it_knows(self):
@@ -837,7 +828,7 @@ class FALabel(FA):
 class QandAWordalisation(FA):
     @property
     def tell_it_how_to_answer(self):
-        return [f"{self.describe_base}/few_shot_QandA.xlsx"] 
+        return [f"{self.describe_base}/few_shot/few_shot_QandA.xlsx"] 
 
     @property
     def tell_it_what_it_knows(self):
@@ -885,8 +876,8 @@ class QandAWordalisation(FA):
             f"I will give you, firstly, a name of a factor in the form {self.wholefactor}. \n" \
             f"Second, I will give you a description of {self.wholefactor} in terms of the features of a given {self.entity}.\n"
             f"Your task is to write a two sentence summary explaining how we should interpret {self.factor}.\n"
-            f"The first sentence should explain what it means to be {self.factor}. The second sentence "
-            f"should contrast it with being the opposite of {self.factor}.\n"
+            f"The first sentence should explain what it means to be {self.factor}.\n"
+            f"The second sentence should contrast it with being the opposite of {self.factor}.\n"
             "The summary should be easy to understand for someone not familiar with factor analysis and not mention any technical terms.\n"
             "It should be lively and engaging. Give life to the description.\n"
         )
@@ -929,7 +920,7 @@ class QandAWordalisation(FA):
                     "Second, a description of the factor in terms of the features of a given entity.\n"
                     "Your task is to write a two sentence summary explaining how we should interpret either x or y.\n"
                     "Sometimes you will be asked to explain x, other times y.\n"
-                    "The first sentence should explain what it means to possess the adjective in question. "
+                    "The first sentence should explain what it means to possess the adjective in question.\n"
                     "The second sentence should contrast it with its opposite.\n"
                     "The summary should be easy to understand for someone not familiar with factor analysis and not mention any technical terms.\n"
                     "It should be lively and engaging. Give life to the description.\n"
@@ -953,7 +944,7 @@ class QandAWordalisation(FA):
 class QandAWordalisation_from_text(Wordalisation):
     @property
     def tell_it_how_to_answer(self):
-        return [f"{self.describe_base}/few_shot_QandA_from_text.xlsx"] 
+        return [f"{self.describe_base}/few_shot/few_shot_QandA_from_text.xlsx"] 
 
     @property
     def tell_it_what_it_knows(self):
